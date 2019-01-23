@@ -5,10 +5,10 @@
 #include <sstream>
 
 #include "cmMakefile.h"
+#include "cmMessageType.h"
 #include "cmPolicies.h"
 #include "cmState.h"
 #include "cmStateTypes.h"
-#include "cmake.h"
 
 class cmExecutionStatus;
 
@@ -45,6 +45,9 @@ bool cmCMakePolicyCommand::InitialPass(std::vector<std::string> const& args,
   }
   if (args[0] == "VERSION") {
     return this->HandleVersionMode(args);
+  }
+  if (args[0] == "GET_WARNING") {
+    return this->HandleGetWarningMode(args);
   }
 
   std::ostringstream e;
@@ -95,7 +98,11 @@ bool cmCMakePolicyCommand::HandleSetMode(std::vector<std::string> const& args)
 
 bool cmCMakePolicyCommand::HandleGetMode(std::vector<std::string> const& args)
 {
-  if (args.size() != 3) {
+  bool parent_scope = false;
+  if (args.size() == 4 && args[3] == "PARENT_SCOPE") {
+    // Undocumented PARENT_SCOPE option for use within CMake.
+    parent_scope = true;
+  } else if (args.size() != 3) {
     this->SetError("GET must be given exactly 2 additional arguments.");
     return false;
   }
@@ -115,7 +122,8 @@ bool cmCMakePolicyCommand::HandleGetMode(std::vector<std::string> const& args)
   }
 
   // Lookup the policy setting.
-  cmPolicies::PolicyStatus status = this->Makefile->GetPolicyStatus(pid);
+  cmPolicies::PolicyStatus status =
+    this->Makefile->GetPolicyStatus(pid, parent_scope);
   switch (status) {
     case cmPolicies::OLD:
       // Report that the policy is set to OLD.
@@ -138,7 +146,7 @@ bool cmCMakePolicyCommand::HandleGetMode(std::vector<std::string> const& args)
           << "The call to cmake_policy(GET " << id << " ...) at which this "
           << "error appears requests the policy, and this version of CMake "
           << "requires that the policy be set to NEW before it is checked.";
-        this->Makefile->IssueMessage(cmake::FATAL_ERROR, e.str());
+        this->Makefile->IssueMessage(MessageType::FATAL_ERROR, e.str());
       }
   }
 
@@ -174,5 +182,35 @@ bool cmCMakePolicyCommand::HandleVersionMode(
   }
 
   this->Makefile->SetPolicyVersion(version_min, version_max);
+  return true;
+}
+
+bool cmCMakePolicyCommand::HandleGetWarningMode(
+  std::vector<std::string> const& args)
+{
+  if (args.size() != 3) {
+    this->SetError(
+      "GET_WARNING must be given exactly 2 additional arguments.");
+    return false;
+  }
+
+  // Get arguments.
+  std::string const& id = args[1];
+  std::string const& var = args[2];
+
+  // Lookup the policy number.
+  cmPolicies::PolicyID pid;
+  if (!cmPolicies::GetPolicyID(id.c_str(), pid)) {
+    std::ostringstream e;
+    e << "GET_WARNING given policy \"" << id
+      << "\" which is not known to this version of CMake.";
+    this->SetError(e.str());
+    return false;
+  }
+
+  // Lookup the policy warning.
+  this->Makefile->AddDefinition(var,
+                                cmPolicies::GetPolicyWarning(pid).c_str());
+
   return true;
 }

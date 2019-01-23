@@ -116,6 +116,31 @@ Hints
   * If set to TRUE, search **only** for static libraries.
   * If set to FALSE, search **only** for shared libraries.
 
+``Python_FIND_REGISTRY``
+  On Windows the ``Python_FIND_REGISTRY`` variable determine the order
+  of preference between registry and environment variables.
+  the ``Python_FIND_REGISTRY`` variable can be set to empty or one of the
+  following:
+
+  * ``FIRST``: Try to use registry before environment variables.
+    This is the default.
+  * ``LAST``: Try to use registry after environment variables.
+  * ``NEVER``: Never try to use registry.
+
+``CMAKE_FIND_FRAMEWORK``
+  On OS X the :variable:`CMAKE_FIND_FRAMEWORK` variable determine the order of
+  preference between Apple-style and unix-style package components.
+
+  .. note::
+
+    Value ``ONLY`` is not supported so ``FIRST`` will be used instead.
+
+.. note::
+
+  If a Python virtual environment is configured, set variable
+  ``Python_FIND_REGISTRY`` (Windows) or ``CMAKE_FIND_FRAMEWORK`` (macOS) with
+  value ``LAST`` or ``NEVER`` to select it preferably.
+
 Commands
 ^^^^^^^^
 
@@ -144,18 +169,19 @@ else()
   set (Python_FIND_QUIETLY TRUE)
   set (Python_FIND_REQUIRED FALSE)
 
-  foreach (_Python_REQUIRED_VERSION_MAJOR IN ITEMS 3 2)
+  set (_Python_REQUIRED_VERSIONS 3 2)
+  set (_Python_REQUIRED_VERSION_LAST 2)
+
+  foreach (_Python_REQUIRED_VERSION_MAJOR IN LISTS _Python_REQUIRED_VERSIONS)
     set (Python_FIND_VERSION ${_Python_REQUIRED_VERSION_MAJOR})
     include (${CMAKE_CURRENT_LIST_DIR}/FindPython/Support.cmake)
-    if (Python_FOUND)
+    if (Python_FOUND OR
+        _Python_REQUIRED_VERSION_MAJOR EQUAL _Python_REQUIRED_VERSION_LAST)
       break()
     endif()
     # clean-up some CACHE variables to ensure look-up restart from scratch
-    foreach (_Python_ITEM IN ITEMS EXECUTABLE COMPILER
-                                   LIBRARY_RELEASE RUNTIME_LIBRARY_RELEASE
-                                   LIBRARY_DEBUG RUNTIME_LIBRARY_DEBUG
-                                   INCLUDE_DIR)
-      unset (Python_${_Python_ITEM} CACHE)
+    foreach (_Python_ITEM IN LISTS _Python_CACHED_VARS)
+      unset (${_Python_ITEM} CACHE)
     endforeach()
   endforeach()
 

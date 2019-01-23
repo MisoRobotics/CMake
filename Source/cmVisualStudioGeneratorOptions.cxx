@@ -4,47 +4,19 @@
 #include "cmLocalVisualStudioGenerator.h"
 #include "cmOutputConverter.h"
 #include "cmSystemTools.h"
-#include "cmVisualStudio10TargetGenerator.h"
 
 static void cmVS10EscapeForMSBuild(std::string& ret)
 {
   cmSystemTools::ReplaceString(ret, ";", "%3B");
 }
 
-static std::string cmVisualStudio10GeneratorOptionsEscapeForXML(
-  std::string ret)
-{
-  cmSystemTools::ReplaceString(ret, "&", "&amp;");
-  cmSystemTools::ReplaceString(ret, "<", "&lt;");
-  cmSystemTools::ReplaceString(ret, ">", "&gt;");
-  return ret;
-}
-
-static std::string cmVisualStudioGeneratorOptionsEscapeForXML(std::string ret)
-{
-  cmSystemTools::ReplaceString(ret, "&", "&amp;");
-  cmSystemTools::ReplaceString(ret, "\"", "&quot;");
-  cmSystemTools::ReplaceString(ret, "<", "&lt;");
-  cmSystemTools::ReplaceString(ret, ">", "&gt;");
-  cmSystemTools::ReplaceString(ret, "\n", "&#x0D;&#x0A;");
-  return ret;
-}
-
-cmVisualStudioGeneratorOptions::cmVisualStudioGeneratorOptions(
-  cmLocalVisualStudioGenerator* lg, Tool tool,
-  cmVisualStudio10TargetGenerator* g)
-  : cmVisualStudioGeneratorOptions(lg, tool, nullptr, nullptr, g)
-{
-}
-
 cmVisualStudioGeneratorOptions::cmVisualStudioGeneratorOptions(
   cmLocalVisualStudioGenerator* lg, Tool tool, cmVS7FlagTable const* table,
-  cmVS7FlagTable const* extraTable, cmVisualStudio10TargetGenerator* g)
+  cmVS7FlagTable const* extraTable)
   : cmIDEOptions()
   , LocalGenerator(lg)
   , Version(lg->GetVersion())
   , CurrentTool(tool)
-  , TargetGenerator(g)
 {
   // Store the given flag tables.
   this->AddTable(table);
@@ -98,6 +70,7 @@ void cmVisualStudioGeneratorOptions::FixExceptionHandlingDefault()
     case cmGlobalVisualStudioGenerator::VS12:
     case cmGlobalVisualStudioGenerator::VS14:
     case cmGlobalVisualStudioGenerator::VS15:
+    case cmGlobalVisualStudioGenerator::VS16:
       // by default VS puts <ExceptionHandling></ExceptionHandling> empty
       // for a project, to make our projects look the same put a new line
       // and space over for the closing </ExceptionHandling> as the default
@@ -155,7 +128,7 @@ bool cmVisualStudioGeneratorOptions::IsManaged() const
 
 bool cmVisualStudioGeneratorOptions::UsingUnicode() const
 {
-  // Look for the a _UNICODE definition.
+  // Look for a _UNICODE definition.
   for (std::string const& di : this->Defines) {
     if (di == "_UNICODE") {
       return true;
@@ -165,7 +138,7 @@ bool cmVisualStudioGeneratorOptions::UsingUnicode() const
 }
 bool cmVisualStudioGeneratorOptions::UsingSBCS() const
 {
-  // Look for the a _SBCS definition.
+  // Look for a _SBCS definition.
   for (std::string const& di : this->Defines) {
     if (di == "_SBCS") {
       return true;
@@ -297,7 +270,7 @@ void cmVisualStudioGeneratorOptions::FixManifestUACFlags()
 
     if (keyValue[1].front() == '\'' && keyValue[1].back() == '\'') {
       keyValue[1] =
-        keyValue[1].substr(1, std::max<int>(0, keyValue[1].size() - 2));
+        keyValue[1].substr(1, std::max(0, cm::isize(keyValue[1]) - 2));
     }
 
     if (keyValue[0] == "level") {
@@ -325,12 +298,12 @@ void cmVisualStudioGeneratorOptions::FixManifestUACFlags()
   AddFlag(ENABLE_UAC, "true");
 }
 
-void cmVisualStudioGeneratorOptions::Parse(const char* flags)
+void cmVisualStudioGeneratorOptions::Parse(const std::string& flags)
 {
   // Parse the input string as a windows command line since the string
   // is intended for writing directly into the build files.
   std::vector<std::string> args;
-  cmSystemTools::ParseWindowsCommandLine(flags, args);
+  cmSystemTools::ParseWindowsCommandLine(flags.c_str(), args);
 
   // Process flags that need to be represented specially in the IDE
   // project file.
@@ -394,7 +367,7 @@ void cmVisualStudioGeneratorOptions::Reparse(std::string const& key)
   std::string const original = i->second[0];
   i->second[0] = "";
   this->UnknownFlagField = key;
-  this->Parse(original.c_str());
+  this->Parse(original);
 }
 
 void cmVisualStudioGeneratorOptions::StoreUnknownFlag(std::string const& flag)
@@ -421,7 +394,8 @@ void cmVisualStudioGeneratorOptions::StoreUnknownFlag(std::string const& flag)
 
   // This option is not known.  Store it in the output flags.
   std::string const opts = cmOutputConverter::EscapeWindowsShellArgument(
-    flag.c_str(), cmOutputConverter::Shell_Flag_AllowMakeVariables |
+    flag.c_str(),
+    cmOutputConverter::Shell_Flag_AllowMakeVariables |
       cmOutputConverter::Shell_Flag_VSIDE);
   this->AppendFlagString(this->UnknownFlagField, opts);
 }
@@ -444,33 +418,13 @@ void cmVisualStudioGeneratorOptions::SetConfiguration(
   this->Configuration = config;
 }
 
-void cmVisualStudioGeneratorOptions::OutputFlag(std::ostream& fout,
-                                                const char* indent,
-                                                const char* tag,
-                                                const std::string& content)
+const std::string& cmVisualStudioGeneratorOptions::GetConfiguration() const
 {
-  if (this->Version >= cmGlobalVisualStudioGenerator::VS10) {
-    if (!this->Configuration.empty()) {
-      // if there are configuration specific flags, then
-      // use the configuration specific tag for PreprocessorDefinitions
-      fout << indent;
-      this->TargetGenerator->WritePlatformConfigTag(tag, this->Configuration,
-                                                    0, 0, 0, &fout);
-    } else {
-      fout << indent << "<" << tag << ">";
-    }
-    fout << cmVisualStudio10GeneratorOptionsEscapeForXML(content);
-    fout << "</" << tag << ">";
-  } else {
-    fout << indent << tag << "=\"";
-    fout << cmVisualStudioGeneratorOptionsEscapeForXML(content);
-    fout << "\"";
-  }
+  return this->Configuration;
 }
 
 void cmVisualStudioGeneratorOptions::OutputPreprocessorDefinitions(
-  std::ostream& fout, const char* prefix, const char* suffix,
-  const std::string& lang)
+  std::ostream& fout, int indent, const std::string& lang)
 {
   if (this->Defines.empty()) {
     return;
@@ -508,13 +462,11 @@ void cmVisualStudioGeneratorOptions::OutputPreprocessorDefinitions(
     oss << ";%(" << tag << ")";
   }
 
-  this->OutputFlag(fout, prefix, tag, oss.str());
-  fout << suffix;
+  this->OutputFlag(fout, indent, tag, oss.str());
 }
 
 void cmVisualStudioGeneratorOptions::OutputAdditionalIncludeDirectories(
-  std::ostream& fout, const char* prefix, const char* suffix,
-  const std::string& lang)
+  std::ostream& fout, int indent, const std::string& lang)
 {
   if (this->Includes.empty()) {
     return;
@@ -558,12 +510,11 @@ void cmVisualStudioGeneratorOptions::OutputAdditionalIncludeDirectories(
     oss << sep << "%(" << tag << ")";
   }
 
-  this->OutputFlag(fout, prefix, tag, oss.str());
-  fout << suffix;
+  this->OutputFlag(fout, indent, tag, oss.str());
 }
 
 void cmVisualStudioGeneratorOptions::OutputFlagMap(std::ostream& fout,
-                                                   const char* indent)
+                                                   int indent)
 {
   for (auto const& m : this->FlagMap) {
     std::ostringstream oss;
@@ -577,6 +528,5 @@ void cmVisualStudioGeneratorOptions::OutputFlagMap(std::ostream& fout,
     }
 
     this->OutputFlag(fout, indent, m.first.c_str(), oss.str());
-    fout << "\n";
   }
 }

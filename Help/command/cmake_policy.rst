@@ -22,7 +22,9 @@ Setting Policies by CMake Version
 
 The ``cmake_policy`` command is used to set policies to ``OLD`` or ``NEW``
 behavior.  While setting policies individually is supported, we
-encourage projects to set policies based on CMake versions::
+encourage projects to set policies based on CMake versions:
+
+.. code-block:: cmake
 
   cmake_policy(VERSION <min>[...<max>])
 
@@ -30,7 +32,10 @@ encourage projects to set policies based on CMake versions::
 ``major.minor[.patch[.tweak]]``, and the ``...`` is literal.  The ``<min>``
 version must be at least ``2.4`` and at most the running version of CMake.
 The ``<max>`` version, if specified, must be at least the ``<min>`` version
-but may exceed the running version of CMake.
+but may exceed the running version of CMake.  If the running version of
+CMake is older than 3.12, the extra ``...`` dots will be seen as version
+component separators, resulting in the ``...<max>`` part being ignored and
+preserving the pre-3.12 behavior of basing policies on ``<min>``.
 
 This specifies that the current CMake code is written for the given
 range of CMake versions.  All policies known to the running version of CMake
@@ -47,7 +52,7 @@ command implicitly calls ``cmake_policy(VERSION)`` too.
 Setting Policies Explicitly
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-::
+.. code-block:: cmake
 
   cmake_policy(SET CMP<NNNN> NEW)
   cmake_policy(SET CMP<NNNN> OLD)
@@ -63,7 +68,7 @@ policy state to ``NEW``.
 Checking Policy Settings
 ^^^^^^^^^^^^^^^^^^^^^^^^
 
-::
+.. code-block:: cmake
 
   cmake_policy(GET CMP<NNNN> <variable>)
 
@@ -82,7 +87,9 @@ scripts loaded by :command:`include` and :command:`find_package` commands
 except when invoked with the ``NO_POLICY_SCOPE`` option
 (see also policy :policy:`CMP0011`).
 The ``cmake_policy`` command provides an interface to manage custom
-entries on the policy stack::
+entries on the policy stack:
+
+.. code-block:: cmake
 
   cmake_policy(PUSH)
   cmake_policy(POP)

@@ -17,6 +17,7 @@
 #include "cmGeneratorTarget.h"
 #include "cmGlobalGenerator.h"
 #include "cmGlobalNinjaGenerator.h"
+#include "cmLocalGenerator.h"
 #include "cmMakefile.h"
 #include "cmNinjaTargetGenerator.h"
 #include "cmRulePlaceholderExpander.h"
@@ -40,8 +41,7 @@ cmRulePlaceholderExpander*
 cmLocalNinjaGenerator::CreateRulePlaceholderExpander() const
 {
   cmRulePlaceholderExpander* ret =
-    new cmRulePlaceholderExpander(this->Compilers, this->VariableMappings,
-                                  this->CompilerSysroot, this->LinkerSysroot);
+    this->cmLocalGenerator::CreateRulePlaceholderExpander();
   ret->SetTargetImpLib("$TARGET_IMPLIB");
   return ret;
 }
@@ -76,8 +76,8 @@ void cmLocalNinjaGenerator::Generate()
     if (!showIncludesPrefix.empty()) {
       cmGlobalNinjaGenerator::WriteComment(this->GetRulesFileStream(),
                                            "localized /showIncludes string");
-      this->GetRulesFileStream() << "msvc_deps_prefix = " << showIncludesPrefix
-                                 << "\n\n";
+      this->GetRulesFileStream()
+        << "msvc_deps_prefix = " << showIncludesPrefix << "\n\n";
     }
   }
 
@@ -188,13 +188,22 @@ void cmLocalNinjaGenerator::WriteProjectHeader(std::ostream& os)
 void cmLocalNinjaGenerator::WriteNinjaRequiredVersion(std::ostream& os)
 {
   // Default required version
-  std::string requiredVersion =
-    this->GetGlobalNinjaGenerator()->RequiredNinjaVersion();
+  std::string requiredVersion = cmGlobalNinjaGenerator::RequiredNinjaVersion();
 
   // Ninja generator uses the 'console' pool if available (>= 1.5)
   if (this->GetGlobalNinjaGenerator()->SupportsConsolePool()) {
     requiredVersion =
-      this->GetGlobalNinjaGenerator()->RequiredNinjaVersionForConsolePool();
+      cmGlobalNinjaGenerator::RequiredNinjaVersionForConsolePool();
+  }
+
+  // The Ninja generator writes rules which require support for restat
+  // when rebuilding build.ninja manifest (>= 1.8)
+  if (this->GetGlobalNinjaGenerator()->SupportsManifestRestat() &&
+      this->GetCMakeInstance()->DoWriteGlobVerifyTarget() &&
+      !this->GetGlobalNinjaGenerator()->GlobalSettingIsOn(
+        "CMAKE_SUPPRESS_REGENERATION")) {
+    requiredVersion =
+      cmGlobalNinjaGenerator::RequiredNinjaVersionForManifestRestat();
   }
 
   cmGlobalNinjaGenerator::WriteComment(
@@ -241,8 +250,7 @@ void cmLocalNinjaGenerator::WriteNinjaFilesInclusion(std::ostream& os)
   cmGlobalNinjaGenerator* ng = this->GetGlobalNinjaGenerator();
   std::string const ninjaRulesFile =
     ng->NinjaOutputPath(cmGlobalNinjaGenerator::NINJA_RULES_FILE);
-  std::string const rulesFilePath =
-    ng->EncodeIdent(ng->EncodePath(ninjaRulesFile), os);
+  std::string const rulesFilePath = ng->EncodePath(ninjaRulesFile);
   cmGlobalNinjaGenerator::WriteInclude(os, rulesFilePath,
                                        "Include rules file.");
   os << "\n";
@@ -310,7 +318,10 @@ std::string cmLocalNinjaGenerator::WriteCommandScript(
 
   cmsys::ofstream script(scriptPath.c_str());
 
-#ifndef _WIN32
+#ifdef _WIN32
+  script << "@echo off\n";
+  int line = 1;
+#else
   script << "set -e\n\n";
 #endif
 
@@ -321,11 +332,21 @@ std::string cmLocalNinjaGenerator::WriteCommandScript(
     // for the raw shell script.
     cmSystemTools::ReplaceString(cmd, "$$", "$");
 #ifdef _WIN32
-    script << cmd << " || exit /b" << '\n';
+    script << cmd << " || (set FAIL_LINE=" << ++line << "& goto :ABORT)"
+           << '\n';
 #else
     script << cmd << '\n';
 #endif
   }
+
+#ifdef _WIN32
+  script << "goto :EOF\n\n"
+            ":ABORT\n"
+            "set ERROR_CODE=%ERRORLEVEL%\n"
+            "echo Batch file failed at line %FAIL_LINE% "
+            "with errorcode %ERRORLEVEL%\n"
+            "exit /b %ERROR_CODE%";
+#endif
 
   return scriptPath;
 }
@@ -456,7 +477,7 @@ void cmLocalNinjaGenerator::WriteCustomCommandBuildStatement(
   }
 
 #if 0
-#error TODO: Once CC in an ExternalProject target must provide the \
+#  error TODO: Once CC in an ExternalProject target must provide the \
     file of each imported target that has an add_dependencies pointing \
     at us.  How to know which ExternalProject step actually provides it?
 #endif
@@ -555,8 +576,7 @@ std::string cmLocalNinjaGenerator::MakeCustomLauncher(
     return std::string();
   }
 
-  // Expand rules in the empty string.  It may insert the launcher and
-  // perform replacements.
+  // Expand rule variables referenced in the given launcher command.
   cmRulePlaceholderExpander::RuleVariables vars;
 
   std::string output;
@@ -571,12 +591,10 @@ std::string cmLocalNinjaGenerator::MakeCustomLauncher(
   }
   vars.Output = output.c_str();
 
-  std::string launcher = property_value;
-  launcher += " ";
-
   std::unique_ptr<cmRulePlaceholderExpander> rulePlaceholderExpander(
     this->CreateRulePlaceholderExpander());
 
+  std::string launcher = property_value;
   rulePlaceholderExpander->ExpandRuleVariables(this, launcher, vars);
   if (!launcher.empty()) {
     launcher += " ";

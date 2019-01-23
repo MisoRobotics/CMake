@@ -10,6 +10,7 @@
 #include "cmWorkingDirectory.h"
 
 #include <cstring>
+#include <map>
 #include <ostream>
 #include <utility>
 #include <vector>
@@ -87,8 +88,9 @@ int cmCPackArchiveGenerator::addOneComponentToArchive(
     cmCPackLogger(cmCPackLog::LOG_DEBUG, "Adding file: " << rp << std::endl);
     archive.Add(rp, 0, nullptr, false);
     if (!archive) {
-      cmCPackLogger(cmCPackLog::LOG_ERROR, "ERROR while packaging files: "
-                      << archive.GetError() << std::endl);
+      cmCPackLogger(cmCPackLog::LOG_ERROR,
+                    "ERROR while packaging files: " << archive.GetError()
+                                                    << std::endl);
       return 0;
     }
   }
@@ -102,20 +104,23 @@ int cmCPackArchiveGenerator::addOneComponentToArchive(
  */
 #define DECLARE_AND_OPEN_ARCHIVE(filename, archive)                           \
   cmGeneratedFileStream gf;                                                   \
-  gf.Open((filename).c_str(), false, true);                                   \
+  gf.Open((filename), false, true);                                           \
   if (!GenerateHeader(&gf)) {                                                 \
     cmCPackLogger(cmCPackLog::LOG_ERROR,                                      \
-                  "Problem to generate Header for archive < "                 \
+                  "Problem to generate Header for archive <"                  \
                     << (filename) << ">." << std::endl);                      \
     return 0;                                                                 \
   }                                                                           \
   cmArchiveWrite archive(gf, this->Compress, this->ArchiveFormat);            \
-  if (!(archive)) {                                                           \
-    cmCPackLogger(cmCPackLog::LOG_ERROR, "Problem to create archive < "       \
-                    << (filename) << ">. ERROR =" << (archive).GetError()     \
-                    << std::endl);                                            \
-    return 0;                                                                 \
-  }
+  do {                                                                        \
+    if (!(archive)) {                                                         \
+      cmCPackLogger(cmCPackLog::LOG_ERROR,                                    \
+                    "Problem to create archive <"                             \
+                      << (filename) << ">, ERROR = " << (archive).GetError()  \
+                      << std::endl);                                          \
+      return 0;                                                               \
+    }                                                                         \
+  } while (false)
 
 int cmCPackArchiveGenerator::PackageComponents(bool ignoreGroup)
 {
@@ -148,7 +153,8 @@ int cmCPackArchiveGenerator::PackageComponents(bool ignoreGroup)
       // Does the component belong to a group?
       if (comp.second.Group == nullptr) {
         cmCPackLogger(
-          cmCPackLog::LOG_VERBOSE, "Component <"
+          cmCPackLog::LOG_VERBOSE,
+          "Component <"
             << comp.second.Name
             << "> does not belong to any group, package it separately."
             << std::endl);
@@ -258,9 +264,10 @@ int cmCPackArchiveGenerator::PackageFiles()
     std::string rp = cmSystemTools::RelativePath(toplevel, file);
     archive.Add(rp, 0, nullptr, false);
     if (!archive) {
-      cmCPackLogger(cmCPackLog::LOG_ERROR, "Problem while adding file< "
+      cmCPackLogger(cmCPackLog::LOG_ERROR,
+                    "Problem while adding file <"
                       << file << "> to archive <" << packageFileNames[0]
-                      << "> .ERROR =" << archive.GetError() << std::endl);
+                      << ">, ERROR = " << archive.GetError() << std::endl);
       return 0;
     }
   }

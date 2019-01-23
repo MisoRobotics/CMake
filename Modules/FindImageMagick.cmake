@@ -1,87 +1,88 @@
 # Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
 # file Copyright.txt or https://cmake.org/licensing for details.
 
-#.rst:
-# FindImageMagick
-# ---------------
-#
-# Find the ImageMagick binary suite.
-#
-# This module will search for a set of ImageMagick tools specified as
-# components in the FIND_PACKAGE call.  Typical components include, but
-# are not limited to (future versions of ImageMagick might have
-# additional components not listed here):
-#
-# ::
-#
-#   animate
-#   compare
-#   composite
-#   conjure
-#   convert
-#   display
-#   identify
-#   import
-#   mogrify
-#   montage
-#   stream
-#
-#
-#
-# If no component is specified in the FIND_PACKAGE call, then it only
-# searches for the ImageMagick executable directory.  This code defines
-# the following variables:
-#
-# ::
-#
-#   ImageMagick_FOUND                  - TRUE if all components are found.
-#   ImageMagick_EXECUTABLE_DIR         - Full path to executables directory.
-#   ImageMagick_<component>_FOUND      - TRUE if <component> is found.
-#   ImageMagick_<component>_EXECUTABLE - Full path to <component> executable.
-#   ImageMagick_VERSION_STRING         - the version of ImageMagick found
-#                                        (since CMake 2.8.8)
-#
-#
-#
-# ImageMagick_VERSION_STRING will not work for old versions like 5.2.3.
-#
-# There are also components for the following ImageMagick APIs:
-#
-# ::
-#
-#   Magick++
-#   MagickWand
-#   MagickCore
-#
-#
-#
-# For these components the following variables are set:
-#
-# ::
-#
-#   ImageMagick_FOUND                    - TRUE if all components are found.
-#   ImageMagick_INCLUDE_DIRS             - Full paths to all include dirs.
-#   ImageMagick_LIBRARIES                - Full paths to all libraries.
-#   ImageMagick_<component>_FOUND        - TRUE if <component> is found.
-#   ImageMagick_<component>_INCLUDE_DIRS - Full path to <component> include dirs.
-#   ImageMagick_<component>_LIBRARIES    - Full path to <component> libraries.
-#
-#
-#
-# Example Usages:
-#
-# ::
-#
-#   find_package(ImageMagick)
-#   find_package(ImageMagick COMPONENTS convert)
-#   find_package(ImageMagick COMPONENTS convert mogrify display)
-#   find_package(ImageMagick COMPONENTS Magick++)
-#   find_package(ImageMagick COMPONENTS Magick++ convert)
-#
-#
-#
-# Note that the standard FIND_PACKAGE features are supported (i.e.,
-# QUIET, REQUIRED, etc.).
+#[=======================================================================[.rst:
+FindImageMagick
+---------------
+
+Find the ImageMagick binary suite.
+
+This module will search for a set of ImageMagick tools specified as
+components in the FIND_PACKAGE call.  Typical components include, but
+are not limited to (future versions of ImageMagick might have
+additional components not listed here):
+
+::
+
+  animate
+  compare
+  composite
+  conjure
+  convert
+  display
+  identify
+  import
+  mogrify
+  montage
+  stream
+
+
+
+If no component is specified in the FIND_PACKAGE call, then it only
+searches for the ImageMagick executable directory.  This code defines
+the following variables:
+
+::
+
+  ImageMagick_FOUND                  - TRUE if all components are found.
+  ImageMagick_EXECUTABLE_DIR         - Full path to executables directory.
+  ImageMagick_<component>_FOUND      - TRUE if <component> is found.
+  ImageMagick_<component>_EXECUTABLE - Full path to <component> executable.
+  ImageMagick_VERSION_STRING         - the version of ImageMagick found
+                                       (since CMake 2.8.8)
+
+
+
+ImageMagick_VERSION_STRING will not work for old versions like 5.2.3.
+
+There are also components for the following ImageMagick APIs:
+
+::
+
+  Magick++
+  MagickWand
+  MagickCore
+
+
+
+For these components the following variables are set:
+
+::
+
+  ImageMagick_FOUND                    - TRUE if all components are found.
+  ImageMagick_INCLUDE_DIRS             - Full paths to all include dirs.
+  ImageMagick_LIBRARIES                - Full paths to all libraries.
+  ImageMagick_<component>_FOUND        - TRUE if <component> is found.
+  ImageMagick_<component>_INCLUDE_DIRS - Full path to <component> include dirs.
+  ImageMagick_<component>_LIBRARIES    - Full path to <component> libraries.
+
+
+
+Example Usages:
+
+::
+
+  find_package(ImageMagick)
+  find_package(ImageMagick COMPONENTS convert)
+  find_package(ImageMagick COMPONENTS convert mogrify display)
+  find_package(ImageMagick COMPONENTS Magick++)
+  find_package(ImageMagick COMPONENTS Magick++ convert)
+
+
+
+Note that the standard FIND_PACKAGE features are supported (i.e.,
+QUIET, REQUIRED, etc.).
+#]=======================================================================]
 
 find_package(PkgConfig QUIET)
 
@@ -104,6 +105,7 @@ function(FIND_IMAGEMAGICK_API component header)
     PATH_SUFFIXES
       ImageMagick ImageMagick-6 ImageMagick-7
     DOC "Path to the ImageMagick arch-independent include dir."
+    NO_DEFAULT_PATH
     )
   find_path(ImageMagick_${component}_ARCH_INCLUDE_DIR
     NAMES magick/magick-baseconfig.h
@@ -116,6 +118,7 @@ function(FIND_IMAGEMAGICK_API component header)
     PATH_SUFFIXES
       ImageMagick ImageMagick-6 ImageMagick-7
     DOC "Path to the ImageMagick arch-specific include dir."
+    NO_DEFAULT_PATH
     )
   find_library(ImageMagick_${component}_LIBRARY
     NAMES ${ARGN}
@@ -125,6 +128,7 @@ function(FIND_IMAGEMAGICK_API component header)
     PATHS
       "[HKEY_LOCAL_MACHINE\\SOFTWARE\\ImageMagick\\Current;BinPath]/lib"
     DOC "Path to the ImageMagick Magick++ library."
+    NO_DEFAULT_PATH
     )
 
   # old version have only indep dir

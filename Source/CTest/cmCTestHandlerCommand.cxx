@@ -5,9 +5,9 @@
 #include "cmCTest.h"
 #include "cmCTestGenericHandler.h"
 #include "cmMakefile.h"
+#include "cmMessageType.h"
 #include "cmSystemTools.h"
 #include "cmWorkingDirectory.h"
-#include "cmake.h"
 
 #include <cstring>
 #include <sstream>
@@ -151,20 +151,21 @@ bool cmCTestHandlerCommand::InitialPass(std::vector<std::string> const& args,
       cmSystemTools::CollapseFullPath(this->Values[ct_BUILD]).c_str(),
       this->Quiet);
   } else {
-    const char* bdir =
+    std::string const& bdir =
       this->Makefile->GetSafeDefinition("CTEST_BINARY_DIRECTORY");
-    if (bdir) {
+    if (!bdir.empty()) {
       this->CTest->SetCTestConfiguration(
         "BuildDirectory", cmSystemTools::CollapseFullPath(bdir).c_str(),
         this->Quiet);
     } else {
-      cmCTestLog(this->CTest, ERROR_MESSAGE, "CTEST_BINARY_DIRECTORY not set"
-                   << std::endl;);
+      cmCTestLog(this->CTest, ERROR_MESSAGE,
+                 "CTEST_BINARY_DIRECTORY not set" << std::endl;);
     }
   }
   if (this->Values[ct_SOURCE]) {
-    cmCTestLog(this->CTest, DEBUG, "Set source directory to: "
-                 << this->Values[ct_SOURCE] << std::endl);
+    cmCTestLog(this->CTest, DEBUG,
+               "Set source directory to: " << this->Values[ct_SOURCE]
+                                           << std::endl);
     this->CTest->SetCTestConfiguration(
       "SourceDirectory",
       cmSystemTools::CollapseFullPath(this->Values[ct_SOURCE]).c_str(),
@@ -186,8 +187,9 @@ bool cmCTestHandlerCommand::InitialPass(std::vector<std::string> const& args,
   cmCTestLog(this->CTest, DEBUG, "Initialize handler" << std::endl;);
   cmCTestGenericHandler* handler = this->InitializeHandler();
   if (!handler) {
-    cmCTestLog(this->CTest, ERROR_MESSAGE, "Cannot instantiate test handler "
-                 << this->GetName() << std::endl);
+    cmCTestLog(this->CTest, ERROR_MESSAGE,
+               "Cannot instantiate test handler " << this->GetName()
+                                                  << std::endl);
     if (capureCMakeError) {
       this->Makefile->AddDefinition(this->Values[ct_CAPTURE_CMAKE_ERROR],
                                     "-1");
@@ -204,18 +206,7 @@ bool cmCTestHandlerCommand::InitialPass(std::vector<std::string> const& args,
 
   handler->PopulateCustomVectors(this->Makefile);
   if (this->Values[ct_SUBMIT_INDEX]) {
-    if (!this->CTest->GetDropSiteCDash() &&
-        this->CTest->GetDartVersion() <= 1) {
-      cmCTestLog(
-        this->CTest, ERROR_MESSAGE,
-        "Dart before version 2.0 does not support collecting submissions."
-          << std::endl
-          << "Please upgrade the server to Dart 2 or higher, or do not use "
-             "SUBMIT_INDEX."
-          << std::endl);
-    } else {
-      handler->SetSubmitIndex(atoi(this->Values[ct_SUBMIT_INDEX]));
-    }
+    handler->SetSubmitIndex(atoi(this->Values[ct_SUBMIT_INDEX]));
   }
   cmWorkingDirectory workdir(
     this->CTest->GetCTestConfiguration("BuildDirectory"));
@@ -226,8 +217,8 @@ bool cmCTestHandlerCommand::InitialPass(std::vector<std::string> const& args,
     if (capureCMakeError) {
       this->Makefile->AddDefinition(this->Values[ct_CAPTURE_CMAKE_ERROR],
                                     "-1");
-      cmCTestLog(this->CTest, ERROR_MESSAGE, this->GetName()
-                   << " " << this->GetError() << "\n");
+      cmCTestLog(this->CTest, ERROR_MESSAGE,
+                 this->GetName() << " " << this->GetError() << "\n");
       // return success because failure is recorded in CAPTURE_CMAKE_ERROR
       return true;
     }
@@ -298,13 +289,13 @@ bool cmCTestHandlerCommand::CheckArgumentValue(std::string const& arg)
     if (this->Values[k]) {
       std::ostringstream e;
       e << "Called with more than one value for " << this->Arguments[k];
-      this->Makefile->IssueMessage(cmake::FATAL_ERROR, e.str());
+      this->Makefile->IssueMessage(MessageType::FATAL_ERROR, e.str());
       this->ArgumentDoing = ArgumentDoingError;
       return true;
     }
     this->Values[k] = arg.c_str();
-    cmCTestLog(this->CTest, DEBUG, "Set " << this->Arguments[k] << " to "
-                                          << arg << "\n");
+    cmCTestLog(this->CTest, DEBUG,
+               "Set " << this->Arguments[k] << " to " << arg << "\n");
     return true;
   }
   return false;

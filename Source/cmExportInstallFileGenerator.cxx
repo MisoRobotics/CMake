@@ -4,6 +4,7 @@
 
 #include "cmAlgorithms.h"
 #include "cmExportSet.h"
+#include "cmExportSetMap.h"
 #include "cmGeneratedFileStream.h"
 #include "cmGeneratorExpression.h"
 #include "cmGeneratorTarget.h"
@@ -20,8 +21,6 @@
 
 #include <sstream>
 #include <utility>
-
-class cmExportSetMap;
 
 cmExportInstallFileGenerator::cmExportInstallFileGenerator(
   cmInstallExportGenerator* iegen)
@@ -103,6 +102,13 @@ bool cmExportInstallFileGenerator::GenerateMainFile(std::ostream& os)
     this->PopulateInterfaceProperty("INTERFACE_COMPILE_FEATURES", gt,
                                     cmGeneratorExpression::InstallInterface,
                                     properties, missingTargets);
+    this->PopulateInterfaceProperty("INTERFACE_LINK_OPTIONS", gt,
+                                    cmGeneratorExpression::InstallInterface,
+                                    properties, missingTargets);
+    this->PopulateLinkDirectoriesInterface(
+      te, cmGeneratorExpression::InstallInterface, properties, missingTargets);
+    this->PopulateLinkDependsInterface(
+      te, cmGeneratorExpression::InstallInterface, properties, missingTargets);
 
     std::string errorMessage;
     if (!this->PopulateExportProperties(gt, properties, errorMessage)) {
@@ -283,7 +289,7 @@ bool cmExportInstallFileGenerator::GenerateImportFileConfig(
   fileName += this->FileExt;
 
   // Open the output file to generate it.
-  cmGeneratedFileStream exportFileStream(fileName.c_str(), true);
+  cmGeneratedFileStream exportFileStream(fileName, true);
   if (!exportFileStream) {
     std::string se = cmSystemTools::GetLastSystemError();
     std::ostringstream e;
@@ -347,7 +353,7 @@ void cmExportInstallFileGenerator::GenerateImportTargetsConfig(
                                    cmGeneratorExpression::InstallInterface,
                                    gtgt, properties, missingTargets);
 
-      // TOOD: PUBLIC_HEADER_LOCATION
+      // TODO: PUBLIC_HEADER_LOCATION
       // This should wait until the build feature propagation stuff
       // is done.  Then this can be a propagated include directory.
       // this->GenerateImportProperty(config, te->HeaderGenerator,
@@ -390,8 +396,8 @@ void cmExportInstallFileGenerator::SetImportLocationProperty(
     prop += suffix;
 
     // Append the installed file name.
-    value += itgen->GetInstallFilename(target, config,
-                                       cmInstallTargetGenerator::NameImplib);
+    value += cmInstallTargetGenerator::GetInstallFilename(
+      target, config, cmInstallTargetGenerator::NameImplib);
 
     // Store the property.
     properties[prop] = value;
@@ -419,12 +425,12 @@ void cmExportInstallFileGenerator::SetImportLocationProperty(
 
     // Append the installed file name.
     if (target->IsAppBundleOnApple()) {
-      value += itgen->GetInstallFilename(target, config);
+      value += cmInstallTargetGenerator::GetInstallFilename(target, config);
       value += ".app/Contents/MacOS/";
-      value += itgen->GetInstallFilename(target, config);
+      value += cmInstallTargetGenerator::GetInstallFilename(target, config);
     } else {
-      value += itgen->GetInstallFilename(target, config,
-                                         cmInstallTargetGenerator::NameReal);
+      value += cmInstallTargetGenerator::GetInstallFilename(
+        target, config, cmInstallTargetGenerator::NameReal);
     }
 
     // Store the property.

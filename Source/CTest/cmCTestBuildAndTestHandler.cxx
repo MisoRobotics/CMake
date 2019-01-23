@@ -5,6 +5,8 @@
 #include "cmCTest.h"
 #include "cmCTestTestHandler.h"
 #include "cmGlobalGenerator.h"
+#include "cmMakefile.h"
+#include "cmState.h"
 #include "cmSystemTools.h"
 #include "cmWorkingDirectory.h"
 #include "cmake.h"
@@ -162,7 +164,7 @@ int cmCTestBuildAndTestHandler::RunCMakeAndTest(std::string* outstring)
     return 1;
   }
 
-  cmake cm(cmake::RoleProject);
+  cmake cm(cmake::RoleProject, cmState::Project);
   cm.SetHomeDirectory("");
   cm.SetHomeOutputDirectory("");
   std::string cmakeOutString;
@@ -210,9 +212,14 @@ int cmCTestBuildAndTestHandler::RunCMakeAndTest(std::string* outstring)
 
   if (this->BuildNoCMake) {
     // Make the generator available for the Build call below.
-    cm.SetGlobalGenerator(cm.CreateGlobalGenerator(this->BuildGenerator));
-    cm.SetGeneratorPlatform(this->BuildGeneratorPlatform);
-    cm.SetGeneratorToolset(this->BuildGeneratorToolset);
+    cmGlobalGenerator* gen = cm.CreateGlobalGenerator(this->BuildGenerator);
+    cm.SetGlobalGenerator(gen);
+    if (!this->BuildGeneratorPlatform.empty()) {
+      cmMakefile mf(gen, cm.GetCurrentSnapshot());
+      if (!gen->SetGeneratorPlatform(this->BuildGeneratorPlatform, &mf)) {
+        return 1;
+      }
+    }
 
     // Load the cache to make CMAKE_MAKE_PROGRAM available.
     cm.LoadCache(this->BinaryDir);
@@ -225,7 +232,7 @@ int cmCTestBuildAndTestHandler::RunCMakeAndTest(std::string* outstring)
 
   // do the build
   if (this->BuildTargets.empty()) {
-    this->BuildTargets.push_back("");
+    this->BuildTargets.emplace_back();
   }
   for (std::string const& tar : this->BuildTargets) {
     cmDuration remainingTime = std::chrono::seconds(0);
@@ -253,9 +260,9 @@ int cmCTestBuildAndTestHandler::RunCMakeAndTest(std::string* outstring)
       config = "Debug";
     }
     int retVal = cm.GetGlobalGenerator()->Build(
-      this->SourceDir, this->BinaryDir, this->BuildProject, tar, output,
-      this->BuildMakeProgram, config, !this->BuildNoClean, false, false,
-      remainingTime);
+      cmake::NO_BUILD_PARALLEL_LEVEL, this->SourceDir, this->BinaryDir,
+      this->BuildProject, tar, output, this->BuildMakeProgram, config,
+      !this->BuildNoClean, false, false, remainingTime);
     out << output;
     // if the build failed then return
     if (retVal) {

@@ -7,6 +7,14 @@ cmake-variables(7)
 
    .. contents::
 
+This page  documents variables that are provided by CMake
+or have meaning to CMake when set by project code.
+
+For general information on variables, see the
+:ref:`Variables <CMake Language Variables>`
+section in the cmake-language manual.
+
+
 Variables that Provide Information
 ==================================
 
@@ -24,6 +32,7 @@ Variables that Provide Information
    /variable/CMAKE_CACHE_PATCH_VERSION
    /variable/CMAKE_CFG_INTDIR
    /variable/CMAKE_COMMAND
+   /variable/CMAKE_CPACK_COMMAND
    /variable/CMAKE_CROSSCOMPILING
    /variable/CMAKE_CROSSCOMPILING_EMULATOR
    /variable/CMAKE_CTEST_COMMAND
@@ -34,6 +43,7 @@ Variables that Provide Information
    /variable/CMAKE_CURRENT_SOURCE_DIR
    /variable/CMAKE_DIRECTORY_LABELS
    /variable/CMAKE_DL_LIBS
+   /variable/CMAKE_DOTNET_TARGET_FRAMEWORK_VERSION
    /variable/CMAKE_EDIT_COMMAND
    /variable/CMAKE_EXECUTABLE_SUFFIX
    /variable/CMAKE_EXTRA_GENERATOR
@@ -69,8 +79,14 @@ Variables that Provide Information
    /variable/CMAKE_PROJECT_DESCRIPTION
    /variable/CMAKE_PROJECT_HOMEPAGE_URL
    /variable/CMAKE_PROJECT_NAME
+   /variable/CMAKE_PROJECT_VERSION
+   /variable/CMAKE_PROJECT_VERSION_MAJOR
+   /variable/CMAKE_PROJECT_VERSION_MINOR
+   /variable/CMAKE_PROJECT_VERSION_PATCH
+   /variable/CMAKE_PROJECT_VERSION_TWEAK
    /variable/CMAKE_RANLIB
    /variable/CMAKE_ROOT
+   /variable/CMAKE_RULE_MESSAGES
    /variable/CMAKE_SCRIPT_MODE_FILE
    /variable/CMAKE_SHARED_LIBRARY_PREFIX
    /variable/CMAKE_SHARED_LIBRARY_SUFFIX
@@ -94,6 +110,7 @@ Variables that Provide Information
    /variable/CMAKE_VS_PLATFORM_TOOLSET
    /variable/CMAKE_VS_PLATFORM_TOOLSET_CUDA
    /variable/CMAKE_VS_PLATFORM_TOOLSET_HOST_ARCHITECTURE
+   /variable/CMAKE_VS_PLATFORM_TOOLSET_VERSION
    /variable/CMAKE_VS_WINDOWS_TARGET_PLATFORM_VERSION
    /variable/CMAKE_XCODE_GENERATE_SCHEME
    /variable/CMAKE_XCODE_PLATFORM_TOOLSET
@@ -153,6 +170,7 @@ Variables that Change Behavior
    /variable/CMAKE_FIND_NO_INSTALL_PREFIX
    /variable/CMAKE_FIND_PACKAGE_NO_PACKAGE_REGISTRY
    /variable/CMAKE_FIND_PACKAGE_NO_SYSTEM_PACKAGE_REGISTRY
+   /variable/CMAKE_FIND_PACKAGE_RESOLVE_SYMLINKS
    /variable/CMAKE_FIND_PACKAGE_WARN_NO_MODULE
    /variable/CMAKE_FIND_ROOT_PATH
    /variable/CMAKE_FIND_ROOT_PATH_MODE_INCLUDE
@@ -170,6 +188,7 @@ Variables that Change Behavior
    /variable/CMAKE_INSTALL_PREFIX
    /variable/CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT
    /variable/CMAKE_LIBRARY_PATH
+   /variable/CMAKE_LINK_DIRECTORIES_BEFORE
    /variable/CMAKE_MFC_FLAG
    /variable/CMAKE_MODULE_PATH
    /variable/CMAKE_NOT_USING_CONFIG_FLAGS
@@ -197,6 +216,22 @@ Variables that Change Behavior
    /variable/CMAKE_WARN_DEPRECATED
    /variable/CMAKE_WARN_ON_ABSOLUTE_INSTALL_DESTINATION
    /variable/CMAKE_XCODE_GENERATE_TOP_LEVEL_PROJECT_ONLY
+   /variable/CMAKE_XCODE_SCHEME_ADDRESS_SANITIZER
+   /variable/CMAKE_XCODE_SCHEME_ADDRESS_SANITIZER_USE_AFTER_RETURN
+   /variable/CMAKE_XCODE_SCHEME_THREAD_SANITIZER
+   /variable/CMAKE_XCODE_SCHEME_THREAD_SANITIZER_STOP
+   /variable/CMAKE_XCODE_SCHEME_UNDEFINED_BEHAVIOUR_SANITIZER
+   /variable/CMAKE_XCODE_SCHEME_UNDEFINED_BEHAVIOUR_SANITIZER_STOP
+   /variable/CMAKE_XCODE_SCHEME_DISABLE_MAIN_THREAD_CHECKER
+   /variable/CMAKE_XCODE_SCHEME_MAIN_THREAD_CHECKER_STOP
+   /variable/CMAKE_XCODE_SCHEME_MALLOC_SCRIBBLE
+   /variable/CMAKE_XCODE_SCHEME_MALLOC_GUARD_EDGES
+   /variable/CMAKE_XCODE_SCHEME_GUARD_MALLOC
+   /variable/CMAKE_XCODE_SCHEME_ZOMBIE_OBJECTS
+   /variable/CMAKE_XCODE_SCHEME_MALLOC_STACK
+   /variable/CMAKE_XCODE_SCHEME_DYNAMIC_LINKER_API_USAGE
+   /variable/CMAKE_XCODE_SCHEME_DYNAMIC_LIBRARY_LOADS
+   /variable/PackageName_ROOT
 
 Variables that Describe the System
 ==================================
@@ -225,7 +260,6 @@ Variables that Describe the System
    /variable/CMAKE_SYSTEM_PROCESSOR
    /variable/CMAKE_SYSTEM_VERSION
    /variable/CYGWIN
-   /variable/ENV
    /variable/GHS-MULTI
    /variable/MINGW
    /variable/MSVC
@@ -239,6 +273,7 @@ Variables that Describe the System
    /variable/MSVC80
    /variable/MSVC90
    /variable/MSVC_IDE
+   /variable/MSVC_TOOLSET_VERSION
    /variable/MSVC_VERSION
    /variable/UNIX
    /variable/WIN32
@@ -281,7 +316,9 @@ Variables that Control the Build
    /variable/CMAKE_ANDROID_STL_TYPE
    /variable/CMAKE_ARCHIVE_OUTPUT_DIRECTORY
    /variable/CMAKE_ARCHIVE_OUTPUT_DIRECTORY_CONFIG
+   /variable/CMAKE_AUTOGEN_ORIGIN_DEPENDS
    /variable/CMAKE_AUTOGEN_PARALLEL
+   /variable/CMAKE_AUTOGEN_VERBOSE
    /variable/CMAKE_AUTOMOC
    /variable/CMAKE_AUTOMOC_COMPILER_PREDEFINES
    /variable/CMAKE_AUTOMOC_DEPEND_FILTERS
@@ -293,6 +330,7 @@ Variables that Control the Build
    /variable/CMAKE_AUTOUIC_OPTIONS
    /variable/CMAKE_AUTOUIC_SEARCH_PATHS
    /variable/CMAKE_BUILD_RPATH
+   /variable/CMAKE_BUILD_RPATH_USE_ORIGIN
    /variable/CMAKE_BUILD_WITH_INSTALL_NAME_DIR
    /variable/CMAKE_BUILD_WITH_INSTALL_RPATH
    /variable/CMAKE_COMPILE_PDB_OUTPUT_DIRECTORY
@@ -305,8 +343,13 @@ Variables that Control the Build
    /variable/CMAKE_EXE_LINKER_FLAGS_CONFIG
    /variable/CMAKE_EXE_LINKER_FLAGS_CONFIG_INIT
    /variable/CMAKE_EXE_LINKER_FLAGS_INIT
+   /variable/CMAKE_FOLDER
    /variable/CMAKE_Fortran_FORMAT
    /variable/CMAKE_Fortran_MODULE_DIRECTORY
+   /variable/CMAKE_GLOBAL_AUTOGEN_TARGET
+   /variable/CMAKE_GLOBAL_AUTOGEN_TARGET_NAME
+   /variable/CMAKE_GLOBAL_AUTORCC_TARGET
+   /variable/CMAKE_GLOBAL_AUTORCC_TARGET_NAME
    /variable/CMAKE_GNUtoMS
    /variable/CMAKE_INCLUDE_CURRENT_DIR
    /variable/CMAKE_INCLUDE_CURRENT_DIR_IN_INTERFACE
@@ -365,8 +408,17 @@ Variables that Control the Build
    /variable/CMAKE_TRY_COMPILE_TARGET_TYPE
    /variable/CMAKE_USE_RELATIVE_PATHS
    /variable/CMAKE_VISIBILITY_INLINES_HIDDEN
+   /variable/CMAKE_VS_GLOBALS
    /variable/CMAKE_VS_INCLUDE_INSTALL_TO_DEFAULT_BUILD
    /variable/CMAKE_VS_INCLUDE_PACKAGE_TO_DEFAULT_BUILD
+   /variable/CMAKE_VS_SDK_EXCLUDE_DIRECTORIES
+   /variable/CMAKE_VS_SDK_EXECUTABLE_DIRECTORIES
+   /variable/CMAKE_VS_SDK_INCLUDE_DIRECTORIES
+   /variable/CMAKE_VS_SDK_LIBRARY_DIRECTORIES
+   /variable/CMAKE_VS_SDK_LIBRARY_WINRT_DIRECTORIES
+   /variable/CMAKE_VS_SDK_REFERENCE_DIRECTORIES
+   /variable/CMAKE_VS_SDK_SOURCE_DIRECTORIES
+   /variable/CMAKE_VS_WINRT_BY_DEFAULT
    /variable/CMAKE_WIN32_EXECUTABLE
    /variable/CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS
    /variable/CMAKE_XCODE_ATTRIBUTE_an-attribute
@@ -431,11 +483,6 @@ Variables for Languages
    /variable/CMAKE_LANG_FLAGS_RELEASE_INIT
    /variable/CMAKE_LANG_FLAGS_RELWITHDEBINFO
    /variable/CMAKE_LANG_FLAGS_RELWITHDEBINFO_INIT
-   /variable/CMAKE_LANG_GHS_KERNEL_FLAGS_CONFIG
-   /variable/CMAKE_LANG_GHS_KERNEL_FLAGS_DEBUG
-   /variable/CMAKE_LANG_GHS_KERNEL_FLAGS_MINSIZEREL
-   /variable/CMAKE_LANG_GHS_KERNEL_FLAGS_RELEASE
-   /variable/CMAKE_LANG_GHS_KERNEL_FLAGS_RELWITHDEBINFO
    /variable/CMAKE_LANG_IGNORE_EXTENSIONS
    /variable/CMAKE_LANG_IMPLICIT_INCLUDE_DIRECTORIES
    /variable/CMAKE_LANG_IMPLICIT_LINK_DIRECTORIES
@@ -444,6 +491,8 @@ Variables for Languages
    /variable/CMAKE_LANG_LIBRARY_ARCHITECTURE
    /variable/CMAKE_LANG_LINKER_PREFERENCE
    /variable/CMAKE_LANG_LINKER_PREFERENCE_PROPAGATES
+   /variable/CMAKE_LANG_LINKER_WRAPPER_FLAG
+   /variable/CMAKE_LANG_LINKER_WRAPPER_FLAG_SEP
    /variable/CMAKE_LANG_LINK_EXECUTABLE
    /variable/CMAKE_LANG_OUTPUT_EXTENSION
    /variable/CMAKE_LANG_PLATFORM_ID
@@ -488,7 +537,7 @@ Variables for CTest
    /variable/CTEST_CUSTOM_POST_TEST
    /variable/CTEST_CUSTOM_PRE_MEMCHECK
    /variable/CTEST_CUSTOM_PRE_TEST
-   /variable/CTEST_CUSTOM_TEST_IGNORE
+   /variable/CTEST_CUSTOM_TESTS_IGNORE
    /variable/CTEST_CUSTOM_WARNING_EXCEPTION
    /variable/CTEST_CUSTOM_WARNING_MATCH
    /variable/CTEST_CVS_CHECKOUT
@@ -521,6 +570,7 @@ Variables for CTest
    /variable/CTEST_RUN_CURRENT_SCRIPT
    /variable/CTEST_SCP_COMMAND
    /variable/CTEST_SITE
+   /variable/CTEST_SUBMIT_URL
    /variable/CTEST_SOURCE_DIRECTORY
    /variable/CTEST_SVN_COMMAND
    /variable/CTEST_SVN_OPTIONS
@@ -548,3 +598,12 @@ Variables for CPack
    /variable/CPACK_PACKAGING_INSTALL_PREFIX
    /variable/CPACK_SET_DESTDIR
    /variable/CPACK_WARN_ON_ABSOLUTE_INSTALL_DESTINATION
+
+Variable Expansion Operators
+============================
+
+.. toctree::
+   :maxdepth: 1
+
+   /variable/CACHE
+   /variable/ENV

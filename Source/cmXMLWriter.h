@@ -67,7 +67,7 @@ public:
   void SetIndentationElement(std::string const& element);
 
 private:
-  void ConditionalLineBreak(bool condition, std::size_t indent);
+  void ConditionalLineBreak(bool condition);
 
   void PreAttribute();
   void PreContent();
@@ -128,6 +128,7 @@ private:
   std::stack<std::string, std::vector<std::string>> Elements;
   std::string IndentationElement;
   std::size_t Level;
+  std::size_t Indent;
   bool ElementOpen;
   bool BreakAttrib;
   bool IsContent;
@@ -144,6 +145,7 @@ public:
     xmlwr.StartDocument();
   }
   ~cmXMLDocument() { xmlwr.EndDocument(); }
+
 private:
   friend class cmXMLElement;
   cmXMLWriter& xmlwr;
@@ -180,6 +182,12 @@ public:
   {
     xmlwr.Content(content);
   }
+  template <typename T>
+  void Element(std::string const& name, T const& value)
+  {
+    xmlwr.Element(name, value);
+  }
+  void Comment(const char* comment) { xmlwr.Comment(comment); }
 
 private:
   cmXMLWriter& xmlwr;

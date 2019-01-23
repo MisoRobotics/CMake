@@ -1,11 +1,37 @@
 list
 ----
 
-.. only:: html
-
-   .. contents::
-
 List operations.
+
+Synopsis
+^^^^^^^^
+
+.. parsed-literal::
+
+  `Reading`_
+    list(`LENGTH`_ <list> <out-var>)
+    list(`GET`_ <list> <element index> [<index> ...] <out-var>)
+    list(`JOIN`_ <list> <glue> <out-var>)
+    list(`SUBLIST`_ <list> <begin> <length> <out-var>)
+
+  `Search`_
+    list(`FIND`_ <list> <value> <out-var>)
+
+  `Modification`_
+    list(`APPEND`_ <list> [<element>...])
+    list(`FILTER`_ <list> {INCLUDE | EXCLUDE} REGEX <regex>)
+    list(`INSERT`_ <list> <index> [<element>...])
+    list(`REMOVE_ITEM`_ <list> <value>...)
+    list(`REMOVE_AT`_ <list> <index>...)
+    list(`REMOVE_DUPLICATES`_ <list>)
+    list(`TRANSFORM`_ <list> <ACTION> [...])
+
+  `Ordering`_
+    list(`REVERSE`_ <list>)
+    list(`SORT`_ <list> [...])
+
+Introduction
+^^^^^^^^^^^^
 
 The list subcommands ``APPEND``, ``INSERT``, ``FILTER``, ``REMOVE_AT``,
 ``REMOVE_ITEM``, ``REMOVE_DUPLICATES``, ``REVERSE`` and ``SORT`` may create
@@ -33,31 +59,28 @@ scope.  To propagate the results of these operations upwards, use
   Be careful when counting with negative indices: they do not start from
   0.  -0 is equivalent to 0, the first list element.
 
-Capacity and Element access
-^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Reading
+^^^^^^^
 
-LENGTH
-""""""
+.. _LENGTH:
 
-::
+.. code-block:: cmake
 
   list(LENGTH <list> <output variable>)
 
 Returns the list's length.
 
-GET
-"""
+.. _GET:
 
-::
+.. code-block:: cmake
 
   list(GET <list> <element index> [<element index> ...] <output variable>)
 
 Returns the list of elements specified by indices from the list.
 
-JOIN
-""""
+.. _JOIN:
 
-::
+.. code-block:: cmake
 
   list(JOIN <list> <glue> <output variable>)
 
@@ -65,10 +88,9 @@ Returns a string joining all list's elements using the glue string.
 To join multiple strings, which are not part of a list, use ``JOIN`` operator
 from :command:`string` command.
 
-SUBLIST
-"""""""
+.. _SUBLIST:
 
-::
+.. code-block:: cmake
 
   list(SUBLIST <list> <begin> <length> <output variable>)
 
@@ -80,10 +102,9 @@ the remaining elements of the list starting at ``<begin>`` will be returned.
 Search
 ^^^^^^
 
-FIND
-""""
+.. _FIND:
 
-::
+.. code-block:: cmake
 
   list(FIND <list> <value> <output variable>)
 
@@ -93,19 +114,17 @@ if it wasn't found.
 Modification
 ^^^^^^^^^^^^
 
-APPEND
-""""""
+.. _APPEND:
 
-::
+.. code-block:: cmake
 
   list(APPEND <list> [<element> ...])
 
 Appends elements to the list.
 
-FILTER
-""""""
+.. _FILTER:
 
-::
+.. code-block:: cmake
 
   list(FILTER <list> <INCLUDE|EXCLUDE> REGEX <regular_expression>)
 
@@ -115,60 +134,162 @@ In ``REGEX`` mode, items will be matched against the given regular expression.
 For more information on regular expressions see also the
 :command:`string` command.
 
-INSERT
-""""""
+.. _INSERT:
 
-::
+.. code-block:: cmake
 
   list(INSERT <list> <element_index> <element> [<element> ...])
 
 Inserts elements to the list to the specified location.
 
-REMOVE_ITEM
-"""""""""""
+.. _REMOVE_ITEM:
 
-::
+.. code-block:: cmake
 
   list(REMOVE_ITEM <list> <value> [<value> ...])
 
 Removes the given items from the list.
 
-REMOVE_AT
-"""""""""
+.. _REMOVE_AT:
 
-::
+.. code-block:: cmake
 
   list(REMOVE_AT <list> <index> [<index> ...])
 
 Removes items at given indices from the list.
 
-REMOVE_DUPLICATES
-"""""""""""""""""
+.. _REMOVE_DUPLICATES:
 
-::
+.. code-block:: cmake
 
   list(REMOVE_DUPLICATES <list>)
 
 Removes duplicated items in the list.
 
-Sorting
-^^^^^^^
+.. _TRANSFORM:
 
-REVERSE
-"""""""
+.. code-block:: cmake
 
-::
+  list(TRANSFORM <list> <ACTION> [<SELECTOR>]
+                        [OUTPUT_VARIABLE <output variable>])
+
+Transforms the list by applying an action to all or, by specifying a
+``<SELECTOR>``, to the selected elements of the list, storing result in-place
+or in the specified output variable.
+
+.. note::
+
+   ``TRANSFORM`` sub-command does not change the number of elements of the
+   list. If a ``<SELECTOR>`` is specified, only some elements will be changed,
+   the other ones will remain same as before the transformation.
+
+``<ACTION>`` specify the action to apply to the elements of list.
+The actions have exactly the same semantics as sub-commands of
+:command:`string` command.
+
+The ``<ACTION>`` may be one of:
+
+``APPEND``, ``PREPEND``: Append, prepend specified value to each element of
+the list.
+
+.. code-block:: cmake
+
+  list(TRANSFORM <list> <APPEND|PREPEND> <value> ...)
+
+``TOUPPER``, ``TOLOWER``: Convert each element of the list to upper, lower
+characters.
+
+.. code-block:: cmake
+
+  list(TRANSFORM <list> <TOLOWER|TOUPPER> ...)
+
+``STRIP``: Remove leading and trailing spaces from each element of the
+list.
+
+.. code-block:: cmake
+
+  list(TRANSFORM <list> STRIP ...)
+
+``GENEX_STRIP``: Strip any
+:manual:`generator expressions <cmake-generator-expressions(7)>` from each
+element of the list.
+
+.. code-block:: cmake
+
+  list(TRANSFORM <list> GENEX_STRIP ...)
+
+``REPLACE``: Match the regular expression as many times as possible and
+substitute the replacement expression for the match for each element
+of the list
+(Same semantic as ``REGEX REPLACE`` from :command:`string` command).
+
+.. code-block:: cmake
+
+  list(TRANSFORM <list> REPLACE <regular_expression>
+                                <replace_expression> ...)
+
+``<SELECTOR>`` select which elements of the list will be transformed. Only one
+type of selector can be specified at a time.
+
+The ``<SELECTOR>`` may be one of:
+
+``AT``: Specify a list of indexes.
+
+.. code-block:: cmake
+
+  list(TRANSFORM <list> <ACTION> AT <index> [<index> ...] ...)
+
+``FOR``: Specify a range with, optionally, an increment used to iterate over
+the range.
+
+.. code-block:: cmake
+
+  list(TRANSFORM <list> <ACTION> FOR <start> <stop> [<step>] ...)
+
+``REGEX``: Specify a regular expression. Only elements matching the regular
+expression will be transformed.
+
+.. code-block:: cmake
+
+  list(TRANSFORM <list> <ACTION> REGEX <regular_expression> ...)
+
+
+Ordering
+^^^^^^^^
+
+.. _REVERSE:
+
+.. code-block:: cmake
 
   list(REVERSE <list>)
 
 Reverses the contents of the list in-place.
 
-SORT
-""""
+.. _SORT:
 
-::
+.. code-block:: cmake
 
-  list(SORT <list>)
-
+  list(SORT <list> [COMPARE <compare>] [CASE <case>] [ORDER <order>])
 
 Sorts the list in-place alphabetically.
+Use the ``COMPARE`` keyword to select the comparison method for sorting.
+The ``<compare>`` option should be one of:
+
+* ``STRING``: Sorts a list of strings alphabetically.  This is the
+  default behavior if the ``COMPARE`` option is not given.
+* ``FILE_BASENAME``: Sorts a list of pathnames of files by their basenames.
+
+Use the ``CASE`` keyword to select a case sensitive or case insensitive
+sort mode.  The ``<case>`` option should be one of:
+
+* ``SENSITIVE``: List items are sorted in a case-sensitive manner.  This is
+  the default behavior if the ``CASE`` option is not given.
+* ``INSENSITIVE``: List items are sorted case insensitively.  The order of
+  items which differ only by upper/lowercase is not specified.
+
+To control the sort order, the ``ORDER`` keyword can be given.
+The ``<order>`` option should be one of:
+
+* ``ASCENDING``: Sorts the list in ascending order.  This is the default
+  behavior when the ``ORDER`` option is not given.
+* ``DESCENDING``: Sorts the list in descending order.

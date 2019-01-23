@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.10)
 project(RerunRccDepends)
-include("../AutogenTest.cmake")
+include("../AutogenCoreTest.cmake")
 
 # Tests rcc rebuilding when a resource file changes
 
@@ -21,6 +21,7 @@ try_compile(RCC_DEPENDS
   "${rccDepSD}"
   RccDepends
   CMAKE_FLAGS "-DQT_TEST_VERSION=${QT_TEST_VERSION}"
+              "-DCMAKE_AUTOGEN_VERBOSE=${CMAKE_AUTOGEN_VERBOSE}"
               "-DQT_QMAKE_EXECUTABLE:FILEPATH=${QT_QMAKE_EXECUTABLE}"
   OUTPUT_VARIABLE output
 )
@@ -62,7 +63,7 @@ if (NOT rdGenAfter GREATER rdGenBefore)
 endif()
 
 
-message("Changing a the .qrc file")
+message("Changing the .qrc file")
 # - Acquire binary timestamps before the build
 file(TIMESTAMP "${rccDepBinPlain}" rdPlainBefore "${timeformat}")
 file(TIMESTAMP "${rccDepBinGen}" rdGenBefore "${timeformat}")

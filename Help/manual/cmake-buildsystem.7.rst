@@ -95,7 +95,7 @@ Apple Frameworks
 """"""""""""""""
 
 A ``SHARED`` library may be marked with the :prop_tgt:`FRAMEWORK`
-target property to create an OS X or iOS Framework Bundle.
+target property to create an macOS or iOS Framework Bundle.
 The ``MACOSX_FRAMEWORK_IDENTIFIER`` sets ``CFBundleIdentifier`` key
 and it uniquely identifies the bundle.
 
@@ -784,7 +784,7 @@ A *library* output artifact of a buildsystem target may be:
   with the ``MODULE`` option.
 
 * On non-DLL platforms: the shared library file (e.g. ``.so`` or ``.dylib``)
-  of a shared shared library target created by the :command:`add_library`
+  of a shared library target created by the :command:`add_library`
   command with the ``SHARED`` option.
 
 The :prop_tgt:`LIBRARY_OUTPUT_DIRECTORY` and :prop_tgt:`LIBRARY_OUTPUT_NAME`
@@ -821,7 +821,7 @@ Directory-Scoped Commands
 The :command:`target_include_directories`,
 :command:`target_compile_definitions` and
 :command:`target_compile_options` commands have an effect on only one
-target at a time.  The commands :command:`add_definitions`,
+target at a time.  The commands :command:`add_compile_definitions`,
 :command:`add_compile_options` and :command:`include_directories` have
 a similar function, but operate at directory scope instead of target
 scope for convenience.
@@ -978,6 +978,7 @@ are:
 * Built-in properties matching ``COMPATIBLE_INTERFACE_*``
 * ``EXPORT_NAME``
 * ``IMPORTED``
+* ``MANUALLY_ADDED_DEPENDENCIES``
 * ``NAME``
 * Properties matching ``IMPORTED_LIBNAME_*``
 * Properties matching ``MAP_IMPORTED_CONFIG_*``
