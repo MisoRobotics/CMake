@@ -2,23 +2,22 @@
    file Copyright.txt or https://cmake.org/licensing for details.  */
 #include "cmCPackIFWInstaller.h"
 
+#include <cstddef>
+#include <sstream>
+#include <utility>
+
 #include "cmCPackIFWCommon.h"
 #include "cmCPackIFWGenerator.h"
 #include "cmCPackIFWPackage.h"
 #include "cmCPackIFWRepository.h"
 #include "cmCPackLog.h" // IWYU pragma: keep
 #include "cmGeneratedFileStream.h"
+#include "cmStringAlgorithms.h"
 #include "cmSystemTools.h"
 #include "cmXMLParser.h"
 #include "cmXMLWriter.h"
 
-#include <sstream>
-#include <stddef.h>
-#include <utility>
-
-cmCPackIFWInstaller::cmCPackIFWInstaller()
-{
-}
+cmCPackIFWInstaller::cmCPackIFWInstaller() = default;
 
 void cmCPackIFWInstaller::printSkippedOptionWarning(
   const std::string& optionName, const std::string& optionValue)
@@ -154,6 +153,15 @@ void cmCPackIFWInstaller::ConfigureFromOptions()
     }
   }
 
+  // StyleSheet
+  if (const char* option = this->GetOption("CPACK_IFW_PACKAGE_STYLE_SHEET")) {
+    if (cmSystemTools::FileExists(option)) {
+      this->StyleSheet = option;
+    } else {
+      this->printSkippedOptionWarning("CPACK_IFW_PACKAGE_STYLE_SHEET", option);
+    }
+  }
+
   // WizardDefaultWidth
   if (const char* option =
         this->GetOption("CPACK_IFW_PACKAGE_WIZARD_DEFAULT_WIDTH")) {
@@ -164,6 +172,26 @@ void cmCPackIFWInstaller::ConfigureFromOptions()
   if (const char* option =
         this->GetOption("CPACK_IFW_PACKAGE_WIZARD_DEFAULT_HEIGHT")) {
     this->WizardDefaultHeight = option;
+  }
+
+  // WizardShowPageList
+  if (const char* option =
+        this->GetOption("CPACK_IFW_PACKAGE_WIZARD_SHOW_PAGE_LIST")) {
+    if (!this->IsVersionLess("4.0")) {
+      if (this->IsSetToOff("CPACK_IFW_PACKAGE_WIZARD_SHOW_PAGE_LIST")) {
+        this->WizardShowPageList = "false";
+      } else if (this->IsOn("CPACK_IFW_PACKAGE_WIZARD_SHOW_PAGE_LIST")) {
+        this->WizardShowPageList = "true";
+      } else {
+        this->WizardShowPageList.clear();
+      }
+    } else {
+      cmCPackIFWLogger(
+        WARNING,
+        "Option CPACK_IFW_PACKAGE_WIZARD_SHOW_PAGE_LIST is set to value \""
+          << option << "\". But has no any effect for QtIFW less than 4.0 "
+          << "and will be skipped." << std::endl);
+    }
   }
 
   // TitleColor
@@ -185,8 +213,8 @@ void cmCPackIFWInstaller::ConfigureFromOptions()
     this->TargetDir = optIFW_TARGET_DIRECTORY;
   } else if (const char* optPACKAGE_INSTALL_DIRECTORY =
                this->GetOption("CPACK_PACKAGE_INSTALL_DIRECTORY")) {
-    this->TargetDir = "@ApplicationsDir@/";
-    this->TargetDir += optPACKAGE_INSTALL_DIRECTORY;
+    this->TargetDir =
+      cmStrCat("@ApplicationsDir@/", optPACKAGE_INSTALL_DIRECTORY);
   } else {
     this->TargetDir = "@RootDir@/usr/local";
   }
@@ -237,8 +265,7 @@ void cmCPackIFWInstaller::ConfigureFromOptions()
   if (const char* optIFW_PACKAGE_RESOURCES =
         this->GetOption("CPACK_IFW_PACKAGE_RESOURCES")) {
     this->Resources.clear();
-    cmSystemTools::ExpandListArgument(optIFW_PACKAGE_RESOURCES,
-                                      this->Resources);
+    cmExpandList(optIFW_PACKAGE_RESOURCES, this->Resources);
   }
 }
 
@@ -285,11 +312,10 @@ protected:
   {
     if (this->file) {
       std::string content(data, data + length);
-      content = cmSystemTools::TrimWhitespace(content);
+      content = cmTrimWhitespace(content);
       std::string source = this->basePath + "/" + content;
       std::string destination = this->path + "/" + content;
-      if (!cmSystemTools::CopyFileIfDifferent(source.data(),
-                                              destination.data())) {
+      if (!cmSystemTools::CopyFileIfDifferent(source, destination)) {
         this->hasErrors = true;
       }
     }
@@ -384,6 +410,14 @@ void cmCPackIFWInstaller::GenerateInstallerFile()
     xout.Element("WizardStyle", this->WizardStyle);
   }
 
+  // Stylesheet
+  if (!this->StyleSheet.empty()) {
+    std::string name = cmSystemTools::GetFilenameName(this->StyleSheet);
+    std::string path = this->Directory + "/config/" + name;
+    cmsys::SystemTools::CopyFileIfDifferent(this->StyleSheet, path);
+    xout.Element("StyleSheet", name);
+  }
+
   // WizardDefaultWidth
   if (!this->WizardDefaultWidth.empty()) {
     xout.Element("WizardDefaultWidth", this->WizardDefaultWidth);
@@ -392,6 +426,11 @@ void cmCPackIFWInstaller::GenerateInstallerFile()
   // WizardDefaultHeight
   if (!this->WizardDefaultHeight.empty()) {
     xout.Element("WizardDefaultHeight", this->WizardDefaultHeight);
+  }
+
+  // WizardShowPageList
+  if (!this->IsVersionLess("4.0") && !this->WizardShowPageList.empty()) {
+    xout.Element("WizardShowPageList", this->WizardShowPageList);
   }
 
   // TitleColor

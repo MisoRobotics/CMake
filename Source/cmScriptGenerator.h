@@ -1,7 +1,6 @@
 /* Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
    file Copyright.txt or https://cmake.org/licensing for details.  */
-#ifndef cmScriptGenerator_h
-#define cmScriptGenerator_h
+#pragma once
 
 #include "cmConfigure.h" // IWYU pragma: keep
 
@@ -12,7 +11,7 @@
 class cmScriptGeneratorIndent
 {
 public:
-  cmScriptGeneratorIndent() {}
+  cmScriptGeneratorIndent() = default;
   cmScriptGeneratorIndent(int level)
     : Level(level)
   {
@@ -25,7 +24,7 @@ public:
   }
   cmScriptGeneratorIndent Next(int step = 2) const
   {
-    return cmScriptGeneratorIndent(this->Level + step);
+    return { this->Level + step };
   }
 
 private:
@@ -44,18 +43,19 @@ inline std::ostream& operator<<(std::ostream& os,
  */
 class cmScriptGenerator
 {
-  CM_DISABLE_COPY(cmScriptGenerator)
-
 public:
   cmScriptGenerator(std::string config_var,
                     std::vector<std::string> configurations);
   virtual ~cmScriptGenerator();
 
+  cmScriptGenerator(cmScriptGenerator const&) = delete;
+  cmScriptGenerator& operator=(cmScriptGenerator const&) = delete;
+
   void Generate(std::ostream& os, const std::string& config,
                 std::vector<std::string> const& configurationTypes);
 
 protected:
-  typedef cmScriptGeneratorIndent Indent;
+  using Indent = cmScriptGeneratorIndent;
   virtual void GenerateScript(std::ostream& os);
   virtual void GenerateScriptConfigs(std::ostream& os, Indent indent);
   virtual void GenerateScriptActions(std::ostream& os, Indent indent);
@@ -70,7 +70,7 @@ protected:
 
   std::string CreateConfigTest(const std::string& config);
   std::string CreateConfigTest(std::vector<std::string> const& configs);
-  std::string CreateComponentTest(const char* component);
+  std::string CreateComponentTest(const std::string& component);
 
   // Information shared by most generator types.
   std::string RuntimeConfigVariable;
@@ -89,5 +89,3 @@ private:
   void GenerateScriptActionsOnce(std::ostream& os, Indent indent);
   void GenerateScriptActionsPerConfig(std::ostream& os, Indent indent);
 };
-
-#endif

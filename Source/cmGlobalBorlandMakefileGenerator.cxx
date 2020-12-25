@@ -2,6 +2,10 @@
    file Copyright.txt or https://cmake.org/licensing for details.  */
 #include "cmGlobalBorlandMakefileGenerator.h"
 
+#include <utility>
+
+#include <cm/memory>
+
 #include "cmDocumentationEntry.h"
 #include "cmLocalUnixMakefileGenerator3.h"
 #include "cmMakefile.h"
@@ -34,16 +38,15 @@ void cmGlobalBorlandMakefileGenerator::EnableLanguage(
   this->cmGlobalUnixMakefileGenerator3::EnableLanguage(l, mf, optional);
 }
 
-///! Create a local generator appropriate to this Global Generator
-cmLocalGenerator* cmGlobalBorlandMakefileGenerator::CreateLocalGenerator(
-  cmMakefile* mf)
+//! Create a local generator appropriate to this Global Generator
+std::unique_ptr<cmLocalGenerator>
+cmGlobalBorlandMakefileGenerator::CreateLocalGenerator(cmMakefile* mf)
 {
-  cmLocalUnixMakefileGenerator3* lg =
-    new cmLocalUnixMakefileGenerator3(this, mf);
+  auto lg = cm::make_unique<cmLocalUnixMakefileGenerator3>(this, mf);
   lg->SetMakefileVariableSize(32);
   lg->SetMakeCommandEscapeTargetTwice(true);
   lg->SetBorlandMakeCurlyHack(true);
-  return lg;
+  return std::unique_ptr<cmLocalGenerator>(std::move(lg));
 }
 
 void cmGlobalBorlandMakefileGenerator::GetDocumentation(
@@ -53,15 +56,16 @@ void cmGlobalBorlandMakefileGenerator::GetDocumentation(
   entry.Brief = "Generates Borland makefiles.";
 }
 
-void cmGlobalBorlandMakefileGenerator::GenerateBuildCommand(
-  std::vector<std::string>& makeCommand, const std::string& makeProgram,
-  const std::string& projectName, const std::string& projectDir,
-  const std::string& targetName, const std::string& config, bool fast,
-  int /*jobs*/, bool verbose, std::vector<std::string> const& makeOptions)
+std::vector<cmGlobalGenerator::GeneratedMakeCommand>
+cmGlobalBorlandMakefileGenerator::GenerateBuildCommand(
+  const std::string& makeProgram, const std::string& projectName,
+  const std::string& projectDir, std::vector<std::string> const& targetNames,
+  const std::string& config, bool fast, int /*jobs*/, bool verbose,
+  std::vector<std::string> const& makeOptions)
 {
-  this->cmGlobalUnixMakefileGenerator3::GenerateBuildCommand(
-    makeCommand, makeProgram, projectName, projectDir, targetName, config,
-    fast, cmake::NO_BUILD_PARALLEL_LEVEL, verbose, makeOptions);
+  return this->cmGlobalUnixMakefileGenerator3::GenerateBuildCommand(
+    makeProgram, projectName, projectDir, targetNames, config, fast,
+    cmake::NO_BUILD_PARALLEL_LEVEL, verbose, makeOptions);
 }
 
 void cmGlobalBorlandMakefileGenerator::PrintBuildCommandAdvice(

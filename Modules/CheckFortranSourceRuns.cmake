@@ -5,6 +5,8 @@
 CheckFortranSourceRuns
 ----------------------
 
+.. versionadded:: 3.14
+
 Check if given Fortran source compiles and links into an executable and can
 subsequently be run.
 
@@ -16,8 +18,20 @@ subsequently be run.
         [SRC_EXT <extension>])
 
   Check that the source supplied in ``<code>`` can be compiled as a Fortran source
-  file, linked as an executable and then run. The ``<code>`` must contain at
-  least ``program; end program`` statements. If the ``<code>`` could be built and run
+  file, linked as an executable and then run. The ``<code>`` must be a Fortran program
+  containing at least an ``end`` statement--for example:
+
+  .. code-block:: cmake
+
+    check_fortran_source_runs("real :: x[*]; call co_sum(x); end" F2018coarrayOK)
+
+  This command can help avoid costly build processes when a compiler lacks support
+  for a necessary feature, or a particular vendor library is not compatible with
+  the Fortran compiler version being used. Some of these failures only occur at runtime
+  instead of linktime, and a trivial runtime example can catch the issue before the
+  main build process.
+
+  If the ``<code>`` could be built and run
   successfully, the internal cache variable specified by ``<resultVar>`` will
   be set to 1, otherwise it will be set to an value that evaluates to boolean
   false (e.g. an empty string or an error message).
@@ -69,90 +83,10 @@ subsequently be run.
 #]=======================================================================]
 
 include_guard(GLOBAL)
+include(Internal/CheckSourceRuns)
 
 macro(CHECK_Fortran_SOURCE_RUNS SOURCE VAR)
-  if(NOT DEFINED "${VAR}")
-    set(_SRC_EXT)
-    set(_key)
-    foreach(arg ${ARGN})
-      if("${arg}" MATCHES "^(SRC_EXT)$")
-        set(_key "${arg}")
-      elseif(_key)
-        list(APPEND _${_key} "${arg}")
-      else()
-        message(FATAL_ERROR "Unknown argument:\n  ${arg}\n")
-      endif()
-    endforeach()
-    if(NOT _SRC_EXT)
-      set(_SRC_EXT F90)
-    endif()
-    set(MACRO_CHECK_FUNCTION_DEFINITIONS
-      "-D${VAR} ${CMAKE_REQUIRED_FLAGS}")
-    if(CMAKE_REQUIRED_LINK_OPTIONS)
-      set(CHECK_Fortran_SOURCE_COMPILES_ADD_LINK_OPTIONS
-        LINK_OPTIONS ${CMAKE_REQUIRED_LINK_OPTIONS})
-    else()
-      set(CHECK_Fortran_SOURCE_COMPILES_ADD_LINK_OPTIONS)
-    endif()
-    if(CMAKE_REQUIRED_LIBRARIES)
-      set(CHECK_Fortran_SOURCE_COMPILES_ADD_LIBRARIES
-        LINK_LIBRARIES ${CMAKE_REQUIRED_LIBRARIES})
-    else()
-      set(CHECK_Fortran_SOURCE_COMPILES_ADD_LIBRARIES)
-    endif()
-    if(CMAKE_REQUIRED_INCLUDES)
-      set(CHECK_Fortran_SOURCE_COMPILES_ADD_INCLUDES
-        "-DINCLUDE_DIRECTORIES:STRING=${CMAKE_REQUIRED_INCLUDES}")
-    else()
-      set(CHECK_Fortran_SOURCE_COMPILES_ADD_INCLUDES)
-    endif()
-    file(WRITE "${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/CMakeTmp/src.${_SRC_EXT}"
-      "${SOURCE}\n")
-
-    if(NOT CMAKE_REQUIRED_QUIET)
-      message(STATUS "Performing Test ${VAR}")
-    endif()
-    try_run(${VAR}_EXITCODE ${VAR}_COMPILED
-      ${CMAKE_BINARY_DIR}
-      ${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/CMakeTmp/src.${_SRC_EXT}
-      COMPILE_DEFINITIONS ${CMAKE_REQUIRED_DEFINITIONS}
-      ${CHECK_Fortran_SOURCE_COMPILES_ADD_LINK_OPTIONS}
-      ${CHECK_Fortran_SOURCE_COMPILES_ADD_LIBRARIES}
-      CMAKE_FLAGS -DCOMPILE_DEFINITIONS:STRING=${MACRO_CHECK_FUNCTION_DEFINITIONS}
-      -DCMAKE_SKIP_RPATH:BOOL=${CMAKE_SKIP_RPATH}
-      "${CHECK_Fortran_SOURCE_COMPILES_ADD_INCLUDES}"
-      COMPILE_OUTPUT_VARIABLE OUTPUT)
-
-    # if it did not compile make the return value fail code of 1
-    if(NOT ${VAR}_COMPILED)
-      set(${VAR}_EXITCODE 1)
-    endif()
-    # if the return value was 0 then it worked
-    if("${${VAR}_EXITCODE}" EQUAL 0)
-      set(${VAR} 1 CACHE INTERNAL "Test ${VAR}")
-      if(NOT CMAKE_REQUIRED_QUIET)
-        message(STATUS "Performing Test ${VAR} - Success")
-      endif()
-      file(APPEND ${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/CMakeOutput.log
-        "Performing Fortran SOURCE FILE Test ${VAR} succeeded with the following output:\n"
-        "${OUTPUT}\n"
-        "Return value: ${${VAR}}\n"
-        "Source file was:\n${SOURCE}\n")
-    else()
-      if(CMAKE_CROSSCOMPILING AND "${${VAR}_EXITCODE}" MATCHES  "FAILED_TO_RUN")
-        set(${VAR} "${${VAR}_EXITCODE}")
-      else()
-        set(${VAR} "" CACHE INTERNAL "Test ${VAR}")
-      endif()
-
-      if(NOT CMAKE_REQUIRED_QUIET)
-        message(STATUS "Performing Test ${VAR} - Failed")
-      endif()
-      file(APPEND ${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/CMakeError.log
-        "Performing Fortran SOURCE FILE Test ${VAR} failed with the following output:\n"
-        "${OUTPUT}\n"
-        "Return value: ${${VAR}_EXITCODE}\n"
-        "Source file was:\n${SOURCE}\n")
-    endif()
-  endif()
+  # Pass the SRC_EXT we used by default historically.
+  # A user-provided SRC_EXT argument in ARGN will override ours.
+  cmake_check_source_runs(Fortran "${SOURCE}" ${VAR} SRC_EXT "F90" ${ARGN})
 endmacro()

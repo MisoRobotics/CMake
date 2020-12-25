@@ -23,11 +23,13 @@ Otherwise, optional ``elseif`` blocks are processed in the same way.
 Finally, if no ``condition`` is true, ``commands`` in the optional ``else``
 block are executed.
 
-Per legacy, the :command:`else` and :command:`elseif` commands admit
+Per legacy, the :command:`else` and :command:`endif` commands admit
 an optional ``<condition>`` argument.
 If used, it must be a verbatim
 repeat of the argument of the opening
 ``if`` command.
+
+.. _`Condition Syntax`:
 
 Condition Syntax
 ^^^^^^^^^^^^^^^^
@@ -83,12 +85,15 @@ Possible conditions are:
  (in any directory).
 
 ``if(TEST test-name)``
- True if the given name is an existing test name created by the
- :command:`add_test` command.
+ .. versionadded:: 3.3
+  True if the given name is an existing test name created by the
+  :command:`add_test` command.
 
 ``if(EXISTS path-to-file-or-directory)``
  True if the named file or directory exists.  Behavior is well-defined
- only for full paths.
+ only for full paths. Resolves symbolic links, i.e. if the named file or
+ directory is a symbolic link, returns true if the target of the
+ symbolic link exists.
 
 ``if(file1 IS_NEWER_THAN file2)``
  True if ``file1`` is newer than ``file2`` or if one of the two files doesn't
@@ -112,7 +117,9 @@ Possible conditions are:
 ``if(<variable|string> MATCHES regex)``
  True if the given string or variable's value matches the given regular
  condition.  See :ref:`Regex Specification` for regex format.
- ``()`` groups are captured in :variable:`CMAKE_MATCH_<n>` variables.
+
+ .. versionadded:: 3.9
+  ``()`` groups are captured in :variable:`CMAKE_MATCH_<n>` variables.
 
 ``if(<variable|string> LESS <variable|string>)``
  True if the given string or variable's value is a valid number and less
@@ -127,12 +134,14 @@ Possible conditions are:
  to that on the right.
 
 ``if(<variable|string> LESS_EQUAL <variable|string>)``
- True if the given string or variable's value is a valid number and less
- than or equal to that on the right.
+ .. versionadded:: 3.7
+  True if the given string or variable's value is a valid number and less
+  than or equal to that on the right.
 
 ``if(<variable|string> GREATER_EQUAL <variable|string>)``
- True if the given string or variable's value is a valid number and greater
- than or equal to that on the right.
+ .. versionadded:: 3.7
+  True if the given string or variable's value is a valid number and greater
+  than or equal to that on the right.
 
 ``if(<variable|string> STRLESS <variable|string>)``
  True if the given string or variable's value is lexicographically less
@@ -147,12 +156,14 @@ Possible conditions are:
  to the string or variable on the right.
 
 ``if(<variable|string> STRLESS_EQUAL <variable|string>)``
- True if the given string or variable's value is lexicographically less
- than or equal to the string or variable on the right.
+ .. versionadded:: 3.7
+  True if the given string or variable's value is lexicographically less
+  than or equal to the string or variable on the right.
 
 ``if(<variable|string> STRGREATER_EQUAL <variable|string>)``
- True if the given string or variable's value is lexicographically greater
- than or equal to the string or variable on the right.
+ .. versionadded:: 3.7
+  True if the given string or variable's value is lexicographically greater
+  than or equal to the string or variable on the right.
 
 ``if(<variable|string> VERSION_LESS <variable|string>)``
  Component-wise integer version number comparison (version format is
@@ -173,24 +184,30 @@ Possible conditions are:
  component effectively truncates the string at that point.
 
 ``if(<variable|string> VERSION_LESS_EQUAL <variable|string>)``
- Component-wise integer version number comparison (version format is
- ``major[.minor[.patch[.tweak]]]``, omitted components are treated as zero).
- Any non-integer version component or non-integer trailing part of a version
- component effectively truncates the string at that point.
+ .. versionadded:: 3.7
+  Component-wise integer version number comparison (version format is
+  ``major[.minor[.patch[.tweak]]]``, omitted components are treated as zero).
+  Any non-integer version component or non-integer trailing part of a version
+  component effectively truncates the string at that point.
 
 ``if(<variable|string> VERSION_GREATER_EQUAL <variable|string>)``
- Component-wise integer version number comparison (version format is
- ``major[.minor[.patch[.tweak]]]``, omitted components are treated as zero).
- Any non-integer version component or non-integer trailing part of a version
- component effectively truncates the string at that point.
+ .. versionadded:: 3.7
+  Component-wise integer version number comparison (version format is
+  ``major[.minor[.patch[.tweak]]]``, omitted components are treated as zero).
+  Any non-integer version component or non-integer trailing part of a version
+  component effectively truncates the string at that point.
 
 ``if(<variable|string> IN_LIST <variable>)``
- True if the given element is contained in the named list variable.
+ .. versionadded:: 3.3
+  True if the given element is contained in the named list variable.
 
 ``if(DEFINED <name>|CACHE{<name>}|ENV{<name>})``
  True if a variable, cache variable or environment variable
  with given ``<name>`` is defined. The value of the variable
  does not matter. Note that macro arguments are not variables.
+
+ .. versionadded:: 3.14
+  Added support for ``CACHE{<name>}`` variables.
 
 ``if((condition) AND (condition OR (condition)))``
  The conditions inside the parenthesis are evaluated first and then
@@ -227,7 +244,7 @@ above.  The result is ``OFF`` which is false.  However, if we remove the
 
   if(var2)
 
-which is true because ``var2`` is defined to "var1" which is not a false
+which is true because ``var2`` is defined to ``var1`` which is not a false
 constant.
 
 Automatic evaluation applies in the other cases whenever the
@@ -264,11 +281,12 @@ above-documented condition syntax accepts ``<variable|string>``:
   tested to see if they are boolean constants, if so they are used as
   such, otherwise they are assumed to be variables and are dereferenced.
 
-To prevent ambiguity, potential variable or keyword names can be
-specified in a :ref:`Quoted Argument` or a :ref:`Bracket Argument`.
-A quoted or bracketed variable or keyword will be interpreted as a
-string and not dereferenced or interpreted.
-See policy :policy:`CMP0054`.
+.. versionchanged:: 3.1
+  To prevent ambiguity, potential variable or keyword names can be
+  specified in a :ref:`Quoted Argument` or a :ref:`Bracket Argument`.
+  A quoted or bracketed variable or keyword will be interpreted as a
+  string and not dereferenced or interpreted.
+  See policy :policy:`CMP0054`.
 
 There is no automatic evaluation for environment or cache
 :ref:`Variable References`.  Their values must be referenced as

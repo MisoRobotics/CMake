@@ -12,7 +12,7 @@ include(CMakeTestCompilerCommon)
 
 function(CMAKE_DETERMINE_COMPILER_ABI lang src)
   if(NOT DEFINED CMAKE_${lang}_ABI_COMPILED)
-    message(STATUS "Detecting ${lang} compiler ABI info")
+    message(CHECK_START "Detecting ${lang} compiler ABI info")
 
     # Compile the ABI identification source.
     set(BIN "${CMAKE_PLATFORM_INFO_DIR}/CMakeDetermineCompilerABI_${lang}.bin")
@@ -31,6 +31,9 @@ function(CMAKE_DETERMINE_COMPILER_ABI lang src)
       list(APPEND CMAKE_FLAGS "-DCMAKE_${lang}_STANDARD_LIBRARIES=")
     endif()
     __TestCompiler_setTryCompileTargetType()
+
+    # Avoid failing ABI detection on warnings.
+    string(REGEX REPLACE "(^| )-Werror([= ][^ ]*)?( |$)" " " CMAKE_${lang}_FLAGS "${CMAKE_${lang}_FLAGS}")
 
     # Save the current LC_ALL, LC_MESSAGES, and LANG environment variables
     # and set them to "C" that way GCC's "search starts here" text is in
@@ -51,6 +54,7 @@ function(CMAKE_DETERMINE_COMPILER_ABI lang src)
       OUTPUT_VARIABLE OUTPUT
       COPY_FILE "${BIN}"
       COPY_FILE_ERROR _copy_error
+      __CMAKE_INTERNAL ABI
       )
 
     # Restore original LC_ALL, LC_MESSAGES, and LANG
@@ -61,19 +65,35 @@ function(CMAKE_DETERMINE_COMPILER_ABI lang src)
     # Move result from cache to normal variable.
     set(CMAKE_${lang}_ABI_COMPILED ${CMAKE_${lang}_ABI_COMPILED})
     unset(CMAKE_${lang}_ABI_COMPILED CACHE)
+    if(CMAKE_${lang}_ABI_COMPILED AND _copy_error)
+      set(CMAKE_${lang}_ABI_COMPILED 0)
+    endif()
     set(CMAKE_${lang}_ABI_COMPILED ${CMAKE_${lang}_ABI_COMPILED} PARENT_SCOPE)
 
     # Load the resulting information strings.
-    if(CMAKE_${lang}_ABI_COMPILED AND NOT _copy_error)
-      message(STATUS "Detecting ${lang} compiler ABI info - done")
+    if(CMAKE_${lang}_ABI_COMPILED)
+      message(CHECK_PASS "done")
       file(APPEND ${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/CMakeOutput.log
         "Detecting ${lang} compiler ABI info compiled with the following output:\n${OUTPUT}\n\n")
-      file(STRINGS "${BIN}" ABI_STRINGS LIMIT_COUNT 2 REGEX "INFO:[A-Za-z0-9_]+\\[[^]]*\\]")
+      file(STRINGS "${BIN}" ABI_STRINGS LIMIT_COUNT 32 REGEX "INFO:[A-Za-z0-9_]+\\[[^]]*\\]")
+      set(ABI_SIZEOF_DPTR "NOTFOUND")
+      set(ABI_BYTE_ORDER "NOTFOUND")
+      set(ABI_NAME "NOTFOUND")
       foreach(info ${ABI_STRINGS})
-        if("${info}" MATCHES "INFO:sizeof_dptr\\[0*([^]]*)\\]")
+        if("${info}" MATCHES "INFO:sizeof_dptr\\[0*([^]]*)\\]" AND NOT ABI_SIZEOF_DPTR)
           set(ABI_SIZEOF_DPTR "${CMAKE_MATCH_1}")
         endif()
-        if("${info}" MATCHES "INFO:abi\\[([^]]*)\\]")
+        if("${info}" MATCHES "INFO:byte_order\\[(BIG_ENDIAN|LITTLE_ENDIAN)\\]")
+          set(byte_order "${CMAKE_MATCH_1}")
+          if(ABI_BYTE_ORDER STREQUAL "NOTFOUND")
+            # Tentatively use the value because this is the first occurrence.
+            set(ABI_BYTE_ORDER "${byte_order}")
+          elseif(NOT ABI_BYTE_ORDER STREQUAL "${byte_order}")
+            # Drop value because multiple occurrences do not match.
+            set(ABI_BYTE_ORDER "")
+          endif()
+        endif()
+        if("${info}" MATCHES "INFO:abi\\[([^]]*)\\]" AND NOT ABI_NAME)
           set(ABI_NAME "${CMAKE_MATCH_1}")
         endif()
       endforeach()
@@ -84,21 +104,33 @@ function(CMAKE_DETERMINE_COMPILER_ABI lang src)
         set(CMAKE_${lang}_SIZEOF_DATA_PTR "${CMAKE_${lang}_SIZEOF_DATA_PTR_DEFAULT}" PARENT_SCOPE)
       endif()
 
+      if(ABI_BYTE_ORDER)
+        set(CMAKE_${lang}_BYTE_ORDER "${ABI_BYTE_ORDER}" PARENT_SCOPE)
+      endif()
+
       if(ABI_NAME)
         set(CMAKE_${lang}_COMPILER_ABI "${ABI_NAME}" PARENT_SCOPE)
       endif()
 
       # Parse implicit include directory for this language, if available.
-      set (implicit_incdirs "")
       if(CMAKE_${lang}_VERBOSE_FLAG)
+        set (implicit_incdirs "")
         cmake_parse_implicit_include_info("${OUTPUT}" "${lang}"
           implicit_incdirs log rv)
         file(APPEND ${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/CMakeOutput.log
           "Parsed ${lang} implicit include dir info from above output: rv=${rv}\n${log}\n\n")
-        if("${rv}" STREQUAL "done")  # update parent if parse completed ok
-          set(CMAKE_${lang}_IMPLICIT_INCLUDE_DIRECTORIES "${implicit_incdirs}" PARENT_SCOPE)
+        if("${rv}" STREQUAL "done")
+          # Entries that we have been told to explicitly pass as standard include
+          # directories will not be implicitly added by the compiler.
+          if(CMAKE_${lang}_STANDARD_INCLUDE_DIRECTORIES)
+            list(REMOVE_ITEM implicit_incdirs ${CMAKE_${lang}_STANDARD_INCLUDE_DIRECTORIES})
+          endif()
+
+          # We parsed implicit include directories, so override the default initializer.
+          set(_CMAKE_${lang}_IMPLICIT_INCLUDE_DIRECTORIES_INIT "${implicit_incdirs}")
         endif()
       endif()
+      set(CMAKE_${lang}_IMPLICIT_INCLUDE_DIRECTORIES "${_CMAKE_${lang}_IMPLICIT_INCLUDE_DIRECTORIES_INIT}" PARENT_SCOPE)
 
       # Parse implicit linker information for this language, if available.
       set(implicit_dirs "")
@@ -115,8 +147,7 @@ function(CMAKE_DETERMINE_COMPILER_ABI lang src)
       # a try-compile
       if("${lang}" MATCHES "Fortran"
           AND "${CMAKE_GENERATOR}" MATCHES "Visual Studio")
-        set(_desc "Determine Intel Fortran Compiler Implicit Link Path")
-        message(STATUS "${_desc}")
+        message(CHECK_START "Determine Intel Fortran Compiler Implicit Link Path")
         # Build a sample project which reports symbols.
         try_compile(IFORT_LIB_PATH_COMPILED
           ${CMAKE_BINARY_DIR}/CMakeFiles/IntelVSImplicitPath
@@ -129,8 +160,7 @@ function(CMAKE_DETERMINE_COMPILER_ABI lang src)
           "${CMAKE_BINARY_DIR}/CMakeFiles/IntelVSImplicitPath/output.txt"
           "${_output}")
         include(${CMAKE_BINARY_DIR}/CMakeFiles/IntelVSImplicitPath/output.cmake OPTIONAL)
-        set(_desc "Determine Intel Fortran Compiler Implicit Link Path -- done")
-        message(STATUS "${_desc}")
+        message(CHECK_PASS "done")
       endif()
 
       # Implicit link libraries cannot be used explicitly for multiple
@@ -154,10 +184,22 @@ function(CMAKE_DETERMINE_COMPILER_ABI lang src)
             break()
           endif()
         endforeach()
+      elseif(CMAKE_CXX_COMPILER_ID STREQUAL QCC)
+        foreach(dir ${implicit_dirs})
+          if (dir MATCHES "/lib$")
+            get_filename_component(assumedArchDir "${dir}" DIRECTORY)
+            get_filename_component(archParentDir "${assumedArchDir}" DIRECTORY)
+            if (archParentDir STREQUAL CMAKE_SYSROOT)
+              get_filename_component(archDirName "${assumedArchDir}" NAME)
+              set(CMAKE_${lang}_LIBRARY_ARCHITECTURE "${archDirName}" PARENT_SCOPE)
+              break()
+            endif()
+          endif()
+        endforeach()
       endif()
 
     else()
-      message(STATUS "Detecting ${lang} compiler ABI info - failed")
+      message(CHECK_FAIL "failed")
       file(APPEND ${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/CMakeError.log
         "Detecting ${lang} compiler ABI info failed to compile with the following output:\n${OUTPUT}\n${_copy_error}\n\n")
     endif()

@@ -1,7 +1,6 @@
 /* Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
    file Copyright.txt or https://cmake.org/licensing for details.  */
-#ifndef cmLocalXCodeGenerator_h
-#define cmLocalXCodeGenerator_h
+#pragma once
 
 #include "cmConfigure.h" // IWYU pragma: keep
 
@@ -24,7 +23,7 @@ class cmSourceFile;
 class cmLocalXCodeGenerator : public cmLocalGenerator
 {
 public:
-  ///! Set cache only and recurse to false by default.
+  //! Set cache only and recurse to false by default.
   cmLocalXCodeGenerator(cmGlobalGenerator* gg, cmMakefile* mf);
 
   ~cmLocalXCodeGenerator() override;
@@ -40,5 +39,3 @@ public:
 
 private:
 };
-
-#endif

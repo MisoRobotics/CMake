@@ -3,9 +3,10 @@
 #include "cm_codecvt.hxx"
 
 #if defined(_WIN32)
+#  include <windows.h>
+
 #  include <assert.h>
 #  include <string.h>
-#  include <windows.h>
 #  undef max
 #  include "cmsys/Encoding.hxx"
 #endif
@@ -38,9 +39,7 @@ codecvt::codecvt(Encoding e)
   }
 }
 
-codecvt::~codecvt()
-{
-}
+codecvt::~codecvt() = default;
 
 bool codecvt::do_always_noconv() const throw()
 {

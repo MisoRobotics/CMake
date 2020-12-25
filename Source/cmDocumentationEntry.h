@@ -1,7 +1,6 @@
 /* Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
    file Copyright.txt or https://cmake.org/licensing for details.  */
-#ifndef cmDocumentationEntry_h
-#define cmDocumentationEntry_h
+#pragma once
 
 #include "cmConfigure.h" // IWYU pragma: keep
 
@@ -13,7 +12,7 @@ struct cmDocumentationEntry
   std::string Name;
   std::string Brief;
   char CustomNamePrefix = ' ';
-  cmDocumentationEntry() {}
+  cmDocumentationEntry() = default;
   cmDocumentationEntry(const char* doc[2])
   {
     if (doc[0]) {
@@ -33,5 +32,3 @@ struct cmDocumentationEntry
     }
   }
 };
-
-#endif

@@ -2,24 +2,26 @@
    file Copyright.txt or https://cmake.org/licensing for details.  */
 #include "cmCPackSTGZGenerator.h"
 
-#include "cmsys/FStream.hxx"
+#include <cstdio>
 #include <sstream>
-#include <stdio.h>
 #include <string>
 #include <vector>
 
+#include "cmsys/FStream.hxx"
+
+#include "cm_sys_stat.h"
+
+#include "cmArchiveWrite.h"
 #include "cmCPackGenerator.h"
 #include "cmCPackLog.h"
 #include "cmSystemTools.h"
-#include "cm_sys_stat.h"
 
 cmCPackSTGZGenerator::cmCPackSTGZGenerator()
+  : cmCPackArchiveGenerator(cmArchiveWrite::CompressGZip, "paxr", ".sh")
 {
 }
 
-cmCPackSTGZGenerator::~cmCPackSTGZGenerator()
-{
-}
+cmCPackSTGZGenerator::~cmCPackSTGZGenerator() = default;
 
 int cmCPackSTGZGenerator::InitializeInternal()
 {

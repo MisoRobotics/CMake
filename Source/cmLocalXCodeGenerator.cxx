@@ -19,9 +19,7 @@ cmLocalXCodeGenerator::cmLocalXCodeGenerator(cmGlobalGenerator* gg,
   this->EmitUniversalBinaryFlags = false;
 }
 
-cmLocalXCodeGenerator::~cmLocalXCodeGenerator()
-{
-}
+cmLocalXCodeGenerator::~cmLocalXCodeGenerator() = default;
 
 std::string cmLocalXCodeGenerator::GetTargetDirectory(
   cmGeneratorTarget const*) const
@@ -42,7 +40,7 @@ void cmLocalXCodeGenerator::Generate()
 {
   cmLocalGenerator::Generate();
 
-  for (auto target : this->GetGeneratorTargets()) {
+  for (const auto& target : this->GetGeneratorTargets()) {
     target->HasMacOSXRpathInstallNameDir("");
   }
 }
@@ -51,7 +49,7 @@ void cmLocalXCodeGenerator::GenerateInstallRules()
 {
   cmLocalGenerator::GenerateInstallRules();
 
-  for (auto target : this->GetGeneratorTargets()) {
+  for (const auto& target : this->GetGeneratorTargets()) {
     target->HasMacOSXRpathInstallNameDir("");
   }
 }
@@ -67,9 +65,8 @@ void cmLocalXCodeGenerator::ComputeObjectFilenames(
   std::map<std::string, int> counts;
   for (auto& si : mapping) {
     cmSourceFile const* sf = si.first;
-    std::string objectName =
-      cmSystemTools::GetFilenameWithoutLastExtension(sf->GetFullPath());
-    objectName += ".o";
+    std::string objectName = cmStrCat(
+      cmSystemTools::GetFilenameWithoutLastExtension(sf->GetFullPath()), ".o");
 
     std::string objectNameLower = cmSystemTools::LowerCase(objectName);
     counts[objectNameLower] += 1;

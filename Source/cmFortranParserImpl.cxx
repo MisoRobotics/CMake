@@ -1,15 +1,16 @@
 /* Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
    file Copyright.txt or https://cmake.org/licensing for details.  */
-#include "cmFortranParser.h"
-#include "cmSystemTools.h"
-
-#include <assert.h>
+#include <cassert>
+#include <cstdio>
 #include <set>
 #include <stack>
-#include <stdio.h>
 #include <string>
 #include <utility>
 #include <vector>
+
+#include "cmFortranParser.h"
+#include "cmStringAlgorithms.h"
+#include "cmSystemTools.h"
 
 bool cmFortranParser_s::FindIncludeFile(const char* dir,
                                         const char* includeName,
@@ -22,9 +23,7 @@ bool cmFortranParser_s::FindIncludeFile(const char* dir,
   }
   // Check for the file in the directory containing the including
   // file.
-  std::string fullName = dir;
-  fullName += "/";
-  fullName += includeName;
+  std::string fullName = cmStrCat(dir, '/', includeName);
   if (cmSystemTools::FileExists(fullName, true)) {
     fileName = fullName;
     return true;
@@ -32,9 +31,7 @@ bool cmFortranParser_s::FindIncludeFile(const char* dir,
 
   // Search the include path for the file.
   for (std::string const& i : this->IncludePath) {
-    fullName = i;
-    fullName += "/";
-    fullName += includeName;
+    fullName = cmStrCat(i, '/', includeName);
     if (cmSystemTools::FileExists(fullName, true)) {
       fileName = fullName;
       return true;
@@ -43,10 +40,12 @@ bool cmFortranParser_s::FindIncludeFile(const char* dir,
   return false;
 }
 
-cmFortranParser_s::cmFortranParser_s(std::vector<std::string> includes,
+cmFortranParser_s::cmFortranParser_s(cmFortranCompiler fc,
+                                     std::vector<std::string> includes,
                                      std::set<std::string> defines,
                                      cmFortranSourceInfo& info)
-  : IncludePath(std::move(includes))
+  : Compiler(std::move(fc))
+  , IncludePath(std::move(includes))
   , PPDefinitions(std::move(defines))
   , Info(info)
 {
@@ -67,6 +66,23 @@ cmFortranParser_s::cmFortranParser_s(std::vector<std::string> includes,
 cmFortranParser_s::~cmFortranParser_s()
 {
   cmFortran_yylex_destroy(this->Scanner);
+}
+
+std::string cmFortranParser_s::ModName(std::string const& mod_name) const
+{
+  return mod_name + ".mod";
+}
+
+std::string cmFortranParser_s::SModName(std::string const& mod_name,
+                                        std::string const& sub_name) const
+{
+  std::string const& SModExt =
+    this->Compiler.SModExt.empty() ? ".mod" : this->Compiler.SModExt;
+  // An empty separator means that the compiler does not use a prefix.
+  if (this->Compiler.SModSep.empty()) {
+    return sub_name + SModExt;
+  }
+  return mod_name + this->Compiler.SModSep + sub_name + SModExt;
 }
 
 bool cmFortranParser_FilePush(cmFortranParser* parser, const char* fname)
@@ -178,7 +194,7 @@ void cmFortranParser_RuleUse(cmFortranParser* parser, const char* module_name)
   // syntax:   "use module_name"
   // requires: "module_name.mod"
   std::string const& mod_name = cmSystemTools::LowerCase(module_name);
-  parser->Info.Requires.insert(mod_name + ".mod");
+  parser->Info.Requires.insert(parser->ModName(mod_name));
 }
 
 void cmFortranParser_RuleLineDirective(cmFortranParser* parser,
@@ -242,7 +258,7 @@ void cmFortranParser_RuleModule(cmFortranParser* parser,
     // syntax:   "module module_name"
     // provides: "module_name.mod"
     std::string const& mod_name = cmSystemTools::LowerCase(module_name);
-    parser->Info.Provides.insert(mod_name + ".mod");
+    parser->Info.Provides.insert(parser->ModName(mod_name));
   }
 }
 
@@ -265,8 +281,8 @@ void cmFortranParser_RuleSubmodule(cmFortranParser* parser,
 
   std::string const& mod_name = cmSystemTools::LowerCase(module_name);
   std::string const& sub_name = cmSystemTools::LowerCase(submodule_name);
-  parser->Info.Requires.insert(mod_name + ".mod");
-  parser->Info.Provides.insert(mod_name + "@" + sub_name + ".smod");
+  parser->Info.Requires.insert(parser->ModName(mod_name));
+  parser->Info.Provides.insert(parser->SModName(mod_name, sub_name));
 }
 
 void cmFortranParser_RuleSubmoduleNested(cmFortranParser* parser,
@@ -286,8 +302,8 @@ void cmFortranParser_RuleSubmoduleNested(cmFortranParser* parser,
   std::string const& sub_name = cmSystemTools::LowerCase(submodule_name);
   std::string const& nest_name =
     cmSystemTools::LowerCase(nested_submodule_name);
-  parser->Info.Requires.insert(mod_name + "@" + sub_name + ".smod");
-  parser->Info.Provides.insert(mod_name + "@" + nest_name + ".smod");
+  parser->Info.Requires.insert(parser->SModName(mod_name, sub_name));
+  parser->Info.Provides.insert(parser->SModName(mod_name, nest_name));
 }
 
 void cmFortranParser_RuleDefine(cmFortranParser* parser, const char* macro)

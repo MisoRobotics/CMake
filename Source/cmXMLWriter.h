@@ -1,26 +1,27 @@
 /* Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
    file Copyright.txt or https://cmake.org/licensing for details.  */
-#ifndef cmXMLWiter_h
-#define cmXMLWiter_h
+#pragma once
 
 #include "cmConfigure.h" // IWYU pragma: keep
 
-#include "cmXMLSafe.h"
-
 #include <chrono>
+#include <cstddef> // IWYU pragma: keep
 #include <ctime>
 #include <ostream>
 #include <stack>
 #include <string>
 #include <vector>
 
+#include "cmXMLSafe.h"
+
 class cmXMLWriter
 {
-  CM_DISABLE_COPY(cmXMLWriter)
-
 public:
   cmXMLWriter(std::ostream& output, std::size_t level = 0);
   ~cmXMLWriter();
+
+  cmXMLWriter(cmXMLWriter const&) = delete;
+  cmXMLWriter& operator=(cmXMLWriter const&) = delete;
 
   void StartDocument(const char* encoding = "UTF-8");
   void EndDocument();
@@ -75,14 +76,11 @@ private:
   void CloseStartElement();
 
 private:
-  static cmXMLSafe SafeAttribute(const char* value)
-  {
-    return cmXMLSafe(value);
-  }
+  static cmXMLSafe SafeAttribute(const char* value) { return { value }; }
 
   static cmXMLSafe SafeAttribute(std::string const& value)
   {
-    return cmXMLSafe(value);
+    return { value };
   }
 
   template <typename T>
@@ -145,6 +143,8 @@ public:
     xmlwr.StartDocument();
   }
   ~cmXMLDocument() { xmlwr.EndDocument(); }
+  cmXMLDocument(const cmXMLDocument&) = delete;
+  cmXMLDocument& operator=(const cmXMLDocument&) = delete;
 
 private:
   friend class cmXMLElement;
@@ -171,6 +171,9 @@ public:
   }
   ~cmXMLElement() { xmlwr.EndElement(); }
 
+  cmXMLElement(const cmXMLElement&) = delete;
+  cmXMLElement& operator=(const cmXMLElement&) = delete;
+
   template <typename T>
   cmXMLElement& Attribute(const char* name, T const& value)
   {
@@ -192,5 +195,3 @@ public:
 private:
   cmXMLWriter& xmlwr;
 };
-
-#endif

@@ -27,14 +27,17 @@ may be set prior to including the module to adjust behavior:
   tools even if the release runtime libraries are also available.
 
 ``CMAKE_INSTALL_UCRT_LIBRARIES``
+  .. versionadded:: 3.6
+
   Set to TRUE to install the Windows Universal CRT libraries for
   app-local deployment (e.g. to Windows XP).  This is meaningful
   only with MSVC from Visual Studio 2015 or higher.
 
-  One may set a ``CMAKE_WINDOWS_KITS_10_DIR`` *environment variable*
-  to an absolute path to tell CMake to look for Windows 10 SDKs in
-  a custom location.  The specified directory is expected to contain
-  ``Redist/ucrt/DLLs/*`` directories.
+  .. versionadded:: 3.9
+    One may set a ``CMAKE_WINDOWS_KITS_10_DIR`` *environment variable*
+    to an absolute path to tell CMake to look for Windows 10 SDKs in
+    a custom location.  The specified directory is expected to contain
+    ``Redist/ucrt/DLLs/*`` directories.
 
 ``CMAKE_INSTALL_MFC_LIBRARIES``
   Set to TRUE to install the MSVC MFC runtime libraries.
@@ -53,8 +56,13 @@ may be set prior to including the module to adjust behavior:
   not provide the redistributable files.)
 
 ``CMAKE_INSTALL_SYSTEM_RUNTIME_COMPONENT``
+  .. versionadded:: 3.3
+
   Specify the :command:`install(PROGRAMS)` command ``COMPONENT``
   option.  If not specified, no such option will be used.
+
+.. versionadded:: 3.10
+  Support for installing Intel compiler runtimes.
 #]=======================================================================]
 
 cmake_policy(PUSH)
@@ -69,7 +77,7 @@ foreach(LANG IN ITEMS C CXX Fortran)
       if(CMAKE_SIZEOF_VOID_P EQUAL 8)
         set(_Intel_archdir intel64)
       else()
-        set(_Intel_archdir x86)
+        set(_Intel_archdir ia32)
       endif()
       set(_Intel_compiler_ver ${CMAKE_${LANG}_COMPILER_VERSION})
       if(WIN32)
@@ -210,20 +218,28 @@ if(MSVC)
   set(_MSVC_IDE_VERSION "")
   if(MSVC_VERSION GREATER_EQUAL 2000)
     message(WARNING "MSVC ${MSVC_VERSION} not yet supported.")
-  elseif(MSVC_TOOLSET_VERSION)
-    set(MSVC_REDIST_NAME VC${MSVC_TOOLSET_VERSION})
+  elseif(MSVC_TOOLSET_VERSION GREATER_EQUAL 143)
+    message(WARNING "MSVC toolset v${MSVC_TOOLSET_VERSION} not yet supported.")
+  elseif(MSVC_TOOLSET_VERSION EQUAL 142)
+    set(MSVC_REDIST_NAME VC142)
+    set(_MSVC_DLL_VERSION 140)
+    set(_MSVC_IDE_VERSION 16)
+    if(MSVC_VERSION EQUAL 1920)
+      # VS2019 named this differently prior to update 1.
+      set(MSVC_REDIST_NAME VC141)
+    endif()
+  elseif(MSVC_TOOLSET_VERSION EQUAL 141)
+    set(MSVC_REDIST_NAME VC141)
+    set(_MSVC_DLL_VERSION 140)
+    set(_MSVC_IDE_VERSION 15)
     if(MSVC_VERSION EQUAL 1910)
       # VS2017 named this differently prior to update 3.
       set(MSVC_REDIST_NAME VC150)
     endif()
-
+  elseif(MSVC_TOOLSET_VERSION)
+    set(MSVC_REDIST_NAME VC${MSVC_TOOLSET_VERSION})
     math(EXPR _MSVC_DLL_VERSION "${MSVC_TOOLSET_VERSION} / 10 * 10")
-
-    if(MSVC_TOOLSET_VERSION EQUAL 141)
-      set(_MSVC_IDE_VERSION 15)
-    else()
-      math(EXPR _MSVC_IDE_VERSION "${MSVC_TOOLSET_VERSION} / 10")
-    endif()
+    math(EXPR _MSVC_IDE_VERSION "${MSVC_TOOLSET_VERSION} / 10")
   endif()
 
   set(_MSVCRT_DLL_VERSION "")
@@ -243,10 +259,19 @@ if(MSVC)
     endif()
     if(NOT vs VERSION_LESS 15)
       set(_vs_redist_paths "")
-      cmake_host_system_information(RESULT _vs_dir QUERY VS_${vs}_DIR) # undocumented query
-      if(IS_DIRECTORY "${_vs_dir}")
-        file(GLOB _vs_redist_paths "${_vs_dir}/VC/Redist/MSVC/*")
-      endif()
+      # The toolset and its redistributables may come with any VS version 15 or newer.
+      set(_MSVC_IDE_VERSIONS 16 15)
+      foreach(_vs_ver ${_MSVC_IDE_VERSIONS})
+        set(_vs_glob_redist_paths "")
+        cmake_host_system_information(RESULT _vs_dir QUERY VS_${_vs_ver}_DIR) # undocumented query
+        if(IS_DIRECTORY "${_vs_dir}")
+          file(GLOB _vs_glob_redist_paths "${_vs_dir}/VC/Redist/MSVC/*")
+          list(REVERSE _vs_glob_redist_paths)
+          list(APPEND _vs_redist_paths ${_vs_glob_redist_paths})
+        endif()
+        unset(_vs_glob_redist_paths)
+      endforeach()
+      unset(_MSVC_IDE_VERSIONS)
       unset(_vs_dir)
     else()
       get_filename_component(_vs_dir
@@ -271,6 +296,16 @@ if(MSVC)
         "${MSVC_CRT_DIR}/msvcp${v}.dll"
         )
       if(NOT vs VERSION_LESS 14)
+        foreach(crt
+            "${MSVC_CRT_DIR}/msvcp${v}_1.dll"
+            "${MSVC_CRT_DIR}/msvcp${v}_2.dll"
+            "${MSVC_CRT_DIR}/msvcp${v}_codecvt_ids.dll"
+            "${MSVC_CRT_DIR}/vcruntime${v}_1.dll"
+            )
+          if(EXISTS "${crt}")
+            list(APPEND __install__libs "${crt}")
+          endif()
+        endforeach()
         list(APPEND __install__libs
             "${MSVC_CRT_DIR}/vcruntime${v}.dll"
             "${MSVC_CRT_DIR}/concrt${v}.dll"
@@ -289,6 +324,16 @@ if(MSVC)
         "${MSVC_CRT_DIR}/msvcp${v}d.dll"
         )
       if(NOT vs VERSION_LESS 14)
+        foreach(crt
+            "${MSVC_CRT_DIR}/msvcp${v}_1d.dll"
+            "${MSVC_CRT_DIR}/msvcp${v}_2d.dll"
+            "${MSVC_CRT_DIR}/msvcp${v}d_codecvt_ids.dll"
+            "${MSVC_CRT_DIR}/vcruntime${v}_1d.dll"
+            )
+          if(EXISTS "${crt}")
+            list(APPEND __install__libs "${crt}")
+          endif()
+        endforeach()
         list(APPEND __install__libs
             "${MSVC_CRT_DIR}/vcruntime${v}d.dll"
             "${MSVC_CRT_DIR}/concrt${v}d.dll"

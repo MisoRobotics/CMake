@@ -2,9 +2,11 @@
    file Copyright.txt or https://cmake.org/licensing for details.  */
 #include "cmVSSetupHelper.h"
 
-#include "cmSystemTools.h"
 #include "cmsys/Encoding.hxx"
 #include "cmsys/FStream.hxx"
+
+#include "cmStringAlgorithms.h"
+#include "cmSystemTools.h"
 
 #ifndef VSSetupConstants
 #  define VSSetupConstants
@@ -188,14 +190,14 @@ bool cmVSSetupAPIHelper::GetVSInstanceInfo(
   // Check if a compiler is installed with this instance.
   {
     std::string const vcRoot = vsInstanceInfo.GetInstallLocation();
-    std::string const vcToolsVersionFile =
+    std::string vcToolsVersionFile =
       vcRoot + "/VC/Auxiliary/Build/Microsoft.VCToolsVersion.default.txt";
     std::string vcToolsVersion;
     cmsys::ifstream fin(vcToolsVersionFile.c_str());
     if (!fin || !cmSystemTools::GetLineFromStream(fin, vcToolsVersion)) {
       return false;
     }
-    vcToolsVersion = cmSystemTools::TrimWhitespace(vcToolsVersion);
+    vcToolsVersion = cmTrimWhitespace(vcToolsVersion);
     std::string const vcToolsDir = vcRoot + "/VC/Tools/MSVC/" + vcToolsVersion;
     if (!cmSystemTools::FileIsDirectory(vcToolsDir)) {
       return false;
@@ -251,6 +253,20 @@ bool cmVSSetupAPIHelper::GetVSInstanceInfo(std::string& vsInstallLocation)
 
   if (isInstalled) {
     vsInstallLocation = chosenInstanceInfo.GetInstallLocation();
+  }
+
+  return isInstalled;
+}
+
+bool cmVSSetupAPIHelper::GetVSInstanceVersion(
+  unsigned long long& vsInstanceVersion)
+{
+  vsInstanceVersion = 0;
+  bool isInstalled = this->EnumerateAndChooseVSInstance();
+
+  if (isInstalled) {
+    vsInstanceVersion =
+      static_cast<unsigned long long>(chosenInstanceInfo.ullVersion);
   }
 
   return isInstalled;
@@ -364,8 +380,8 @@ bool cmVSSetupAPIHelper::EnumerateAndChooseVSInstance()
         // We are not looking for a specific instance.
         // If we've been given a hint then use it.
         if (!envVSCommonToolsDir.empty()) {
-          std::string currentVSLocation = instanceInfo.GetInstallLocation();
-          currentVSLocation += "/Common7/Tools";
+          std::string currentVSLocation =
+            cmStrCat(instanceInfo.GetInstallLocation(), "/Common7/Tools");
           if (cmSystemTools::ComparePath(currentVSLocation,
                                          envVSCommonToolsDir)) {
             chosenInstanceInfo = instanceInfo;

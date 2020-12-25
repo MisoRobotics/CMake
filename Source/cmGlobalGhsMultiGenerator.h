@@ -1,14 +1,23 @@
 /* Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
    file Copyright.txt or https://cmake.org/licensing for details.  */
-#ifndef cmGhsMultiGenerator_h
-#define cmGhsMultiGenerator_h
+#pragma once
+
+#include <iosfwd>
+#include <memory>
+#include <set>
+#include <string>
+#include <utility>
+#include <vector>
 
 #include "cmGlobalGenerator.h"
-
-#include "cmGhsMultiGpj.h"
 #include "cmGlobalGeneratorFactory.h"
+#include "cmTargetDepend.h"
 
-class cmGeneratedFileStream;
+class cmGeneratorTarget;
+class cmLocalGenerator;
+class cmMakefile;
+class cmake;
+struct cmDocumentationEntry;
 
 class cmGlobalGhsMultiGenerator : public cmGlobalGenerator
 {
@@ -17,21 +26,23 @@ public:
   static const char* FILE_EXTENSION;
 
   cmGlobalGhsMultiGenerator(cmake* cm);
-  ~cmGlobalGhsMultiGenerator();
+  ~cmGlobalGhsMultiGenerator() override;
 
-  static cmGlobalGeneratorFactory* NewFactory()
+  static std::unique_ptr<cmGlobalGeneratorFactory> NewFactory()
   {
-    return new cmGlobalGeneratorSimpleFactory<cmGlobalGhsMultiGenerator>();
+    return std::unique_ptr<cmGlobalGeneratorFactory>(
+      new cmGlobalGeneratorSimpleFactory<cmGlobalGhsMultiGenerator>());
   }
 
-  ///! create the correct local generator
-  cmLocalGenerator* CreateLocalGenerator(cmMakefile* mf) override;
+  //! create the correct local generator
+  std::unique_ptr<cmLocalGenerator> CreateLocalGenerator(
+    cmMakefile* mf) override;
 
   /// @return the name of this generator.
   static std::string GetActualName() { return "Green Hills MULTI"; }
 
-  ///! Get the name for this generator
-  std::string GetName() const override { return this->GetActualName(); }
+  //! Get the name for this generator
+  std::string GetName() const override { return GetActualName(); }
 
   /// Overloaded methods. @see cmGlobalGenerator::GetDocumentation()
   static void GetDocumentation(cmDocumentationEntry& entry);
@@ -49,7 +60,8 @@ public:
   static bool SupportsPlatform() { return true; }
 
   // Toolset / Platform Support
-  bool SetGeneratorToolset(std::string const& ts, cmMakefile* mf) override;
+  bool SetGeneratorToolset(std::string const& ts, bool build,
+                           cmMakefile* mf) override;
   bool SetGeneratorPlatform(std::string const& p, cmMakefile* mf) override;
 
   /**
@@ -68,7 +80,54 @@ public:
   // Write the common disclaimer text at the top of each build file.
   void WriteFileHeader(std::ostream& fout);
 
-  // Target dependency sorting
+  const char* GetInstallTargetName() const override { return "install"; }
+
+protected:
+  void Generate() override;
+  std::vector<GeneratedMakeCommand> GenerateBuildCommand(
+    const std::string& makeProgram, const std::string& projectName,
+    const std::string& projectDir, std::vector<std::string> const& targetNames,
+    const std::string& config, bool fast, int jobs, bool verbose,
+    std::vector<std::string> const& makeOptions =
+      std::vector<std::string>()) override;
+
+private:
+  void GetToolset(cmMakefile* mf, std::string& tsd, const std::string& ts);
+
+  /* top-level project */
+  void OutputTopLevelProject(cmLocalGenerator* root,
+                             std::vector<cmLocalGenerator*>& generators);
+  void WriteTopLevelProject(std::ostream& fout, cmLocalGenerator* root);
+  void WriteMacros(std::ostream& fout, cmLocalGenerator* root);
+  void WriteHighLevelDirectives(cmLocalGenerator* root, std::ostream& fout);
+  void WriteSubProjects(std::ostream& fout, std::string& all_target);
+  void WriteTargets(cmLocalGenerator* root);
+  void WriteProjectLine(std::ostream& fout, cmGeneratorTarget const* target,
+                        cmLocalGenerator* root, std::string& rootBinaryDir);
+  void WriteCustomRuleBOD(std::ostream& fout);
+  void WriteCustomTargetBOD(std::ostream& fout);
+  void WriteAllTarget(cmLocalGenerator* root,
+                      std::vector<cmLocalGenerator*>& generators,
+                      std::string& all_target);
+
+  static std::string TrimQuotes(std::string str);
+
+  std::string OsDir;
+  static const char* DEFAULT_BUILD_PROGRAM;
+  static const char* DEFAULT_TOOLSET_ROOT;
+
+  bool ComputeTargetBuildOrder(cmGeneratorTarget const* tgt,
+                               std::vector<cmGeneratorTarget const*>& build);
+  bool ComputeTargetBuildOrder(std::vector<cmGeneratorTarget const*>& tgt,
+                               std::vector<cmGeneratorTarget const*>& build);
+  bool VisitTarget(std::set<cmGeneratorTarget const*>& temp,
+                   std::set<cmGeneratorTarget const*>& perm,
+                   std::vector<cmGeneratorTarget const*>& order,
+                   cmGeneratorTarget const* ti);
+
+  std::vector<cmGeneratorTarget const*> ProjectTargets;
+
+  // Target sorting
   class TargetSet : public std::set<cmGeneratorTarget const*>
   {
   };
@@ -77,57 +136,24 @@ public:
     std::string First;
 
   public:
-    TargetCompare(std::string const& first)
-      : First(first)
+    TargetCompare(std::string first)
+      : First(std::move(first))
     {
     }
     bool operator()(cmGeneratorTarget const* l,
                     cmGeneratorTarget const* r) const;
   };
   class OrderedTargetDependSet;
-
-protected:
-  void Generate() override;
-  void GenerateBuildCommand(std::vector<std::string>& makeCommand,
-                            const std::string& makeProgram,
-                            const std::string& projectName,
-                            const std::string& projectDir,
-                            const std::string& targetName,
-                            const std::string& config, bool fast, int jobs,
-                            bool verbose,
-                            std::vector<std::string> const& makeOptions =
-                              std::vector<std::string>()) override;
-
-private:
-  void GetToolset(cmMakefile* mf, std::string& tsd, const std::string& ts);
-
-  /* top-level project */
-  void OutputTopLevelProject(cmLocalGenerator* root,
-                             std::vector<cmLocalGenerator*>& generators);
-  void WriteTopLevelProject(std::ostream& fout, cmLocalGenerator* root,
-                            std::vector<cmLocalGenerator*>& generators);
-  void WriteMacros(std::ostream& fout);
-  void WriteHighLevelDirectives(std::ostream& fout);
-  void WriteSubProjects(std::ostream& fout, cmLocalGenerator* root,
-                        std::vector<cmLocalGenerator*>& generators);
-
-  std::string trimQuotes(std::string const& str);
-
-  static const char* DEFAULT_BUILD_PROGRAM;
-  static const char* DEFAULT_TOOLSET_ROOT;
 };
 
 class cmGlobalGhsMultiGenerator::OrderedTargetDependSet
   : public std::multiset<cmTargetDepend,
                          cmGlobalGhsMultiGenerator::TargetCompare>
 {
-  typedef std::multiset<cmTargetDepend,
-                        cmGlobalGhsMultiGenerator::TargetCompare>
-    derived;
+  using derived =
+    std::multiset<cmTargetDepend, cmGlobalGhsMultiGenerator::TargetCompare>;
 
 public:
-  typedef cmGlobalGenerator::TargetDependSet TargetDependSet;
+  using TargetDependSet = cmGlobalGenerator::TargetDependSet;
   OrderedTargetDependSet(TargetDependSet const&, std::string const& first);
 };
-
-#endif

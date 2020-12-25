@@ -2,16 +2,21 @@
    file Copyright.txt or https://cmake.org/licensing for details.  */
 #include "cmCTestP4.h"
 
+#include <algorithm>
+#include <ctime>
+#include <ostream>
+#include <utility>
+
+#include <cmext/algorithm>
+
+#include "cmsys/RegularExpression.hxx"
+
 #include "cmCTest.h"
 #include "cmCTestVC.h"
 #include "cmProcessTools.h"
+#include "cmRange.h"
+#include "cmStringAlgorithms.h"
 #include "cmSystemTools.h"
-
-#include "cmsys/RegularExpression.hxx"
-#include <algorithm>
-#include <ostream>
-#include <time.h>
-#include <utility>
 
 cmCTestP4::cmCTestP4(cmCTest* ct, std::ostream& log)
   : cmCTestGlobalVC(ct, log)
@@ -19,9 +24,7 @@ cmCTestP4::cmCTestP4(cmCTest* ct, std::ostream& log)
   this->PriorRev = this->Unknown;
 }
 
-cmCTestP4::~cmCTestP4()
-{
-}
+cmCTestP4::~cmCTestP4() = default;
 
 class cmCTestP4::IdentifyParser : public cmCTestVC::LineParser
 {
@@ -145,8 +148,7 @@ private:
 
 cmCTestP4::User cmCTestP4::GetUserData(const std::string& username)
 {
-  std::map<std::string, cmCTestP4::User>::const_iterator it =
-    Users.find(username);
+  auto it = Users.find(username);
 
   if (it == Users.end()) {
     std::vector<char const*> p4_users;
@@ -195,7 +197,7 @@ public:
   {
     this->SetLog(&P4->Log, prefix);
     this->RegexHeader.compile("^Change ([0-9]+) by (.+)@(.+) on (.*)$");
-    this->RegexDiff.compile("^\\.\\.\\. (.*)#[0-9]+ ([^ ]+)$");
+    this->RegexDiff.compile(R"(^\.\.\. (.*)#[0-9]+ ([^ ]+)$)");
   }
 
 private:
@@ -203,8 +205,8 @@ private:
   cmsys::RegularExpression RegexDiff;
   cmCTestP4* P4;
 
-  typedef cmCTestP4::Revision Revision;
-  typedef cmCTestP4::Change Change;
+  using Revision = cmCTestP4::Revision;
+  using Change = cmCTestP4::Change;
   std::vector<Change> Changes;
   enum SectionType
   {
@@ -325,10 +327,7 @@ void cmCTestP4::SetP4Options(std::vector<char const*>& CommandOptions)
     // The CTEST_P4_OPTIONS variable adds additional Perforce command line
     // options before the main command
     std::string opts = this->CTest->GetCTestConfiguration("P4Options");
-    std::vector<std::string> args =
-      cmSystemTools::ParseArguments(opts.c_str());
-
-    P4Options.insert(P4Options.end(), args.begin(), args.end());
+    cm::append(P4Options, cmSystemTools::ParseArguments(opts));
   }
 
   CommandOptions.clear();
@@ -427,12 +426,11 @@ bool cmCTestP4::LoadRevisions()
 
   // p4 describe -s ...@1111111,2222222
   std::vector<char const*> p4_describe;
-  for (std::vector<std::string>::reverse_iterator i = ChangeLists.rbegin();
-       i != ChangeLists.rend(); ++i) {
+  for (std::string const& i : cmReverseRange(ChangeLists)) {
     SetP4Options(p4_describe);
     p4_describe.push_back("describe");
     p4_describe.push_back("-s");
-    p4_describe.push_back(i->c_str());
+    p4_describe.push_back(i.c_str());
     p4_describe.push_back(nullptr);
 
     DescribeParser outDescribe(this, "p4_describe-out> ");
@@ -463,8 +461,7 @@ bool cmCTestP4::LoadModifications()
 
 bool cmCTestP4::UpdateCustom(const std::string& custom)
 {
-  std::vector<std::string> p4_custom_command;
-  cmSystemTools::ExpandListArgument(custom, p4_custom_command, true);
+  std::vector<std::string> p4_custom_command = cmExpandedList(custom, true);
 
   std::vector<char const*> p4_custom;
   p4_custom.reserve(p4_custom_command.size() + 1);
@@ -503,7 +500,7 @@ bool cmCTestP4::UpdateImpl()
   if (opts.empty()) {
     opts = this->CTest->GetCTestConfiguration("P4UpdateOptions");
   }
-  std::vector<std::string> args = cmSystemTools::ParseArguments(opts.c_str());
+  std::vector<std::string> args = cmSystemTools::ParseArguments(opts);
   for (std::string const& arg : args) {
     p4_sync.push_back(arg.c_str());
   }

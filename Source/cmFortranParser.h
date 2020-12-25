@@ -1,7 +1,6 @@
 /* Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
    file Copyright.txt or https://cmake.org/licensing for details.  */
-#ifndef cmFortranParser_h
-#define cmFortranParser_h
+#pragma once
 
 #if !defined(cmFortranLexer_cxx) && !defined(cmFortranParser_cxx)
 #  include "cmConfigure.h" // IWYU pragma: keep
@@ -12,10 +11,10 @@
 #  include <vector>
 #endif
 
-#include <stddef.h> /* size_t */
+#include <cstddef> /* size_t */
 
 /* Forward declare parser object type.  */
-typedef struct cmFortranParser_s cmFortranParser;
+using cmFortranParser = struct cmFortranParser_s;
 
 /* Functions to enter/exit #include'd files in order.  */
 bool cmFortranParser_FilePush(cmFortranParser* parser, const char* fname);
@@ -128,14 +127,31 @@ struct cmFortranFile
   bool LastCharWasNewline;
 };
 
+struct cmFortranCompiler
+{
+  std::string Id;
+  std::string SModSep;
+  std::string SModExt;
+};
+
 struct cmFortranParser_s
 {
-  cmFortranParser_s(std::vector<std::string> includes,
+  cmFortranParser_s(cmFortranCompiler fc, std::vector<std::string> includes,
                     std::set<std::string> defines, cmFortranSourceInfo& info);
   ~cmFortranParser_s();
 
+  cmFortranParser_s(const cmFortranParser_s&) = delete;
+  cmFortranParser_s& operator=(const cmFortranParser_s&) = delete;
+
   bool FindIncludeFile(const char* dir, const char* includeName,
                        std::string& fileName);
+
+  std::string ModName(std::string const& mod_name) const;
+  std::string SModName(std::string const& mod_name,
+                       std::string const& sub_name) const;
+
+  // What compiler.
+  cmFortranCompiler Compiler;
 
   // The include file search path.
   std::vector<std::string> IncludePath;
@@ -163,6 +179,4 @@ struct cmFortranParser_s
   // Information about the parsed source.
   cmFortranSourceInfo& Info;
 };
-#endif
-
 #endif

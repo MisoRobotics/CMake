@@ -4,9 +4,7 @@
 
 #include <utility>
 
-cmExpandedCommandArgument::cmExpandedCommandArgument()
-{
-}
+cmExpandedCommandArgument::cmExpandedCommandArgument() = default;
 
 cmExpandedCommandArgument::cmExpandedCommandArgument(std::string value,
                                                      bool quoted)
@@ -38,9 +36,4 @@ bool cmExpandedCommandArgument::operator==(std::string const& value) const
 bool cmExpandedCommandArgument::empty() const
 {
   return this->Value.empty();
-}
-
-const char* cmExpandedCommandArgument::c_str() const
-{
-  return this->Value.c_str();
 }
